@@ -70,4 +70,4 @@ C가 `BUILD_REPORT.md`와 발표 자료에 옮길 수 있게 정리한 기록이
 - C에게: 렌더러(`index.html`의 `#gate`, `#mainView`, `#mainFoot`, `renderer.js`의 `renderGate`, `view.js`의 `pickScreen`·`gateView`, `styles.css` 끝의 로그인 화면 스타일)를 A가 같은 PR로 바꿨다. README "처음 사용하기"에 (1) Kiro CLI 설치 (2) 아는척 실행 후 로그인 버튼 (3) 브라우저에서 로그인 순서를 적어 주세요.
 - B에게: OpenAI 호환 설정이 있어도 Kiro 로그인 전에는 분석하지 않는다(사용자 결정). 공급자 선택 로직(`resolveProvider`)은 그대로다.
 - 확인한 것: 로그인 화면 스모크(`node scripts/smoke.js --gate`: 첫 화면, 나중에 하기, 분석 시 다시 로그인 화면), 이미 로그인된 PC에서 실제 kiro-cli로 로그인 시작 -> "Already logged in" -> 연결됨 전환.
-- 확인하지 못한 것: 로그아웃 상태에서 방법별 실제 브라우저 로그인. `kiro-cli logout` 후 앱에서 버튼으로 로그인해 보면 된다.
+- 사용자 확인: 로그아웃 상태에서 앱 버튼으로 실제 브라우저 로그인 후 메인 화면 전환까지 확인했다(2026-11-14).

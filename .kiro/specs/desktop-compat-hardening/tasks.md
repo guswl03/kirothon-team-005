@@ -57,7 +57,7 @@ A 담당 데스크톱 통합 안정화 작업이다. 모든 코드 수정은 `sr
     - _Requirements: 8.1, 8.5, 8.6, 8.7_
   - [x] 10.4 `check.js` openExternal 규칙, 로그인 화면 스모크(`node scripts/smoke.js --gate`), 문서
     - _Requirements: 8.4_
-  - [ ]* 10.5 로그아웃 상태에서 실제 브라우저 로그인 확인(사용자)
+  - [x]* 10.5 로그아웃 상태에서 실제 브라우저 로그인 확인(사용자, 2026-11-14 확인 완료)
     - _Requirements: 8.2_
 
 ## Task Dependency Graph

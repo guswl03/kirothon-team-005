@@ -77,4 +77,4 @@ Kiro semantic reviewer로 `src/main/*`, `src/native/selection.ps1`, `scripts/com
 | 설치 스크립트 실행 | 앱은 설치를 실행하지 않음. 공식 설치 안내 페이지와 설치 명령 복사만 제공 | `KIRO_INSTALL_URL`, `KIRO_INSTALL_COMMAND` |
 | 로그인 프로세스가 남음 | 5분 제한, 취소, 앱 종료 시 끝냄. 콘솔 창(터미널 방법)은 사용자가 보는 창이라 강제로 닫지 않음 | `kiroLogin.js`, `will-quit` |
 
-남은 위험: 로그아웃 상태에서 실제 브라우저 로그인(방법별)과 일회용 코드 표시는 사용자 확인이 필요하다. 이 PC는 이미 로그인되어 있어 "Already logged in" 경로만 실제 kiro-cli로 확인했다.
+확인: 로그아웃 상태에서 앱 버튼으로 실제 브라우저 로그인과 메인 화면 전환을 사용자가 확인했다(2026-11-14).
