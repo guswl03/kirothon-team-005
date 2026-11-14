@@ -1,23 +1,33 @@
-# 의존성
-node_modules/
-.venv/
-venv/
-__pycache__/
-*.pyc
-
-# 빌드 결과
-dist/
-build/
-.next/
-out/
-
-# 비밀 정보 — 절대 커밋하지 마세요
+# Secrets and machine-local files (product-specific ignores are added after PRD)
 .env
 .env.*
 !.env.example
 *.pem
 *.key
-
-# 기타
-.DS_Store
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+**/.DS_Store
+Thumbs.db
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+node_modules/
+coverage/
+.coverage
 *.log
+# Kiro session data should not be committed
+.kiro/session-state/
+# Kiro workflow 실행 산출물(상태 파일, 중간 보고서)
+.kiro/workflow-output/
+# Genuine generated app output can extend this file
+
+# build output
+dist/
+out/

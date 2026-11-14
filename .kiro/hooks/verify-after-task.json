@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "spec 작업 완료 후 검증",
+      "trigger": "PostTaskExec",
+      "description": "spec 작업을 완료로 표시한 뒤 전체 테스트와 보안 점검을 실행한다.",
+      "action": {
+        "type": "command",
+        "command": "node scripts/hooks/verify.js",
+        "timeout": 180
+      }
+    }
+  ]
+}

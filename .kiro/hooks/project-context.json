@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "세션 시작 시 역할과 남은 작업 주입",
+      "trigger": "SessionStart",
+      "description": "현재 브랜치의 역할과 소유 디렉터리, 공유 영역 규칙, 검증 명령, 남은 spec 작업을 컨텍스트에 넣는다.",
+      "action": {
+        "type": "command",
+        "command": "node scripts/hooks/context.js",
+        "timeout": 15
+      }
+    }
+  ]
+}

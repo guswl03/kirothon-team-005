@@ -1,0 +1,17 @@
+name: prd-to-repo
+description: Build a product directly from a supplied PRD.
+inputs:
+  prd_path: file
+steps:
+  - type: step
+    id: implement-project
+    agent: wf-coder
+    prompt: >-
+      Read the complete PRD at {{prd_path}} and use
+      .kiro/skills/prd-to-repo/SKILL.md to build the requested product in
+      this repository. Choose a suitable stack and implement the requested
+      functionality. Add configuration and instructions to run the product.
+      When deployment is requested, add the relevant configuration and
+      instructions and carry out the requested deployment when the environment
+      permits. Keep the source PRD intact unless asked to change it. Summarize
+      the work completed and any remaining work.

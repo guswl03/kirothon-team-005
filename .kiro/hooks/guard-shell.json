@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "위험한 셸 명령 차단",
+      "trigger": "PreToolUse",
+      "description": "force push, reset --hard, clean -f, branch -D, --no-verify, git config 변경, npm publish, 빌드 산출물이 아닌 재귀 강제 삭제를 exit 2로 막는다.",
+      "matcher": "shell",
+      "action": {
+        "type": "command",
+        "command": "node scripts/hooks/guard-shell.js",
+        "timeout": 15
+      },
+      "enabled": false
+    }
+  ]
+}
