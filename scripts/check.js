@@ -30,6 +30,18 @@ for (const file of walk(root)) {
     for (const [re, msg] of RULES) if (re.test(line)) { bad++; console.error(`${path.relative(root, file)}:${i + 1} ${msg}`); }
   });
 }
+// PowerShell 헬퍼 규칙: 선택 텍스트를 파일/콘솔/오류로 내보내지 않고, 비밀번호란을 제외한다.
+const ps = fs.readFileSync(path.join(root, 'native', 'selection.ps1'), 'utf8');
+const PS_FORBIDDEN = [
+  [/Invoke-Expression|\biex\b/i, 'Invoke-Expression 사용'],
+  [/Set-Content|Out-File|Add-Content|\[IO\.File\]|\[System\.IO\.File\]/i, '파일 쓰기(선택 텍스트 저장 금지)'],
+  [/Write-Host|Write-Error|Write-Warning|Write-Verbose|Write-Debug|\[Console\]::Error/i, '콘솔/오류 출력(선택 텍스트 유출 가능)'],
+  [/Start-Process|Invoke-WebRequest|Invoke-RestMethod|Net\.WebClient/i, '외부 실행/네트워크 호출'],
+];
+for (const [re, msg] of PS_FORBIDDEN) if (re.test(ps.replace(/^\s*#.*$/gm, ''))) { bad++; console.error(`native/selection.ps1 ${msg}`); }
+if (!/IsPasswordProperty/.test(ps)) { bad++; console.error('native/selection.ps1에 비밀번호란 제외(IsPasswordProperty) 필요'); }
+// 미지원 보고에는 text 필드가 없어야 한다.
+if (/type\s*=\s*'unsupported'[^}]*\btext\b/.test(ps)) { bad++; console.error('native/selection.ps1 unsupported 보고에 text 포함 금지'); }
 const html = fs.readFileSync(path.join(root, 'renderer', 'index.html'), 'utf8');
 if (!/Content-Security-Policy/.test(html) || /unsafe-inline|unsafe-eval/.test(html)) { bad++; console.error('CSP 누락 또는 unsafe 지시어'); }
 const main = fs.readFileSync(path.join(root, 'main', 'main.js'), 'utf8');

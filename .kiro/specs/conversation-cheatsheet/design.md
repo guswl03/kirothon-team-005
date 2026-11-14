@@ -39,7 +39,7 @@ flowchart LR
 
 - Session(메모리 전용): `{text, tone, note, direction, sources[], searchStatus, result, topicHint}`.
 - Result: `{topic, keyFacts[], statements[], questions[], topicSwitches[], shortfalls[]}`.
-- Settings(디스크): `{autoAnalyze, consentAccepted, tone, provider}`만 저장한다.
+- Settings(디스크): `{autoAnalyze, consentAccepted, consentProvider, tone, provider}`만 저장한다.
 
 ## Error Handling
 

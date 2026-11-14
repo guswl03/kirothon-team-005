@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "작업 완료 후 스모크 테스트",
+      "trigger": "PostTaskExec",
+      "description": "스펙 작업이 완료될 때마다 실제 Electron 창에서 분석 흐름이 동작하는지 확인한다.",
+      "action": {
+        "type": "command",
+        "command": "node scripts/smoke.js",
+        "timeout": 120
+      }
+    }
+  ]
+}
