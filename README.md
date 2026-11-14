@@ -70,7 +70,7 @@ npm start
 ### 검증 명령
 
 ```bash
-npm test          # 단위 + 속성 기반 테스트 (42개)
+npm test          # 단위 + 속성 기반 테스트 (57개)
 npm run check     # 보안 정적 점검
 npm run smoke     # 실제 Electron 창에서 검색~렌더링 종단 확인 (네트워크 필요)
 npm run pdf       # PRESENTATION.pdf 재생성
