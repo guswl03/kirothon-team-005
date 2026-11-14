@@ -21,7 +21,7 @@ test('창 위치: 항상 작업 영역 안에 들어온다', () => {
 
 test('설정: 알 수 없는 값은 기본값으로 정리하고, 동의는 명시적 true만 인정', () => {
   assert.deepEqual(sanitize({ autoAnalyze: 'yes', consentAccepted: 1, tone: 'x', provider: 'evil' }),
-    { autoAnalyze: false, consentAccepted: false, consentProvider: '', tone: 'casual', provider: 'auto' });
+    { autoAnalyze: false, consentAccepted: false, consentProvider: '', copyFallback: false, tone: 'casual', provider: 'auto' });
   assert.equal(sanitize(null).tone, 'casual');
 });
 
@@ -36,13 +36,13 @@ test('설정 저장: 선택 텍스트 같은 다른 필드는 저장하지 않�
   s.set({ tone: 'work', text: '비밀 텍스트', selected: 'x' });
   const raw = fs.readFileSync(path.join(dir, 'settings.json'), 'utf8');
   assert.ok(!raw.includes('비밀'));
-  assert.deepEqual(Object.keys(JSON.parse(raw)).sort(), ['autoAnalyze', 'consentAccepted', 'consentProvider', 'provider', 'tone']);
+  assert.deepEqual(Object.keys(JSON.parse(raw)).sort(), ['autoAnalyze', 'consentAccepted', 'consentProvider', 'copyFallback', 'provider', 'tone']);
   assert.equal(createSettings(dir).get().tone, 'work');
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
 test('선택 감지 헬퍼 출력 파싱', () => {
-  assert.deepEqual(parseLine('{"text":"안녕","pid":12}'), { type: 'selection', text: '안녕', pid: 12 });
+  assert.deepEqual(parseLine('{"text":"안녕","pid":12}'), { type: 'selection', text: '안녕', pid: 12, via: 'uia' });
   assert.equal(parseLine('not json'), null);
   assert.equal(parseLine('{"pid":1}'), null);
 });

@@ -40,6 +40,38 @@ const PS_FORBIDDEN = [
 ];
 for (const [re, msg] of PS_FORBIDDEN) if (re.test(ps.replace(/^\s*#.*$/gm, ''))) { bad++; console.error(`native/selection.ps1 ${msg}`); }
 if (!/IsPasswordProperty/.test(ps)) { bad++; console.error('native/selection.ps1에 비밀번호란 제외(IsPasswordProperty) 필요'); }
+// 메신저 복사 대체 경로 규칙: 키 입력과 클립보드 읽기는 정해진 함수 안에서만, 허용 확인 뒤에만 한다.
+const psCode = ps.replace(/^\s*#(?! ===== main loop).*$/gm, '');   // 주석은 지우되 함수 영역 끝 표시는 남긴다
+if (psCode.indexOf('===== main loop') < 0) { bad++; console.error('native/selection.ps1에 "# ===== main loop =====" 표시 필요(함수 영역 끝)'); }
+const loopAt = psCode.indexOf('===== main loop');
+const body = (name) => {
+  const s = psCode.indexOf(`function ${name}`);
+  if (s < 0) return null;
+  const rest = psCode.slice(s + 1);
+  const ends = [rest.search(/\nfunction /), loopAt >= 0 ? loopAt - s - 1 : -1].filter((n) => n >= 0);
+  return { start: s, end: s + 1 + (ends.length ? Math.min(...ends) : rest.length), text: psCode.slice(s, s + 1 + (ends.length ? Math.min(...ends) : rest.length)) };
+};
+const allIdx = (re) => { const out = []; let m; const g = new RegExp(re.source, 'g'); while ((m = g.exec(psCode))) out.push(m.index); return out; };
+const copyFn = body('Invoke-CopyFallback');
+const allowFn = body('Test-CopyAllowed');
+const backupFn = body('Backup-Clipboard');
+const inside = (i, fns) => fns.some((f) => f && i >= f.start && i < f.end);
+if (!copyFn || !allowFn) { bad++; console.error('native/selection.ps1에 Invoke-CopyFallback, Test-CopyAllowed 함수 필요'); }
+else {
+  for (const i of allIdx(/::keybd_event\(|SendInput|SendKeys/)) {
+    if (!inside(i, [copyFn])) { bad++; console.error('native/selection.ps1 키 입력은 Invoke-CopyFallback 안에서만 보낸다'); break; }
+  }
+  const firstKey = copyFn.text.search(/::keybd_event\(/);
+  const allowAt = copyFn.text.search(/Test-CopyAllowed/);
+  if (firstKey >= 0 && (allowAt < 0 || allowAt > firstKey)) { bad++; console.error('native/selection.ps1 Invoke-CopyFallback는 키 입력 전에 Test-CopyAllowed를 확인해야 한다'); }
+  if (!/\$CopyFallback/.test(allowFn.text) || !/\$AllowedCopyApps/.test(allowFn.text)) { bad++; console.error('native/selection.ps1 Test-CopyAllowed는 옵션(-CopyFallback)과 허용 목록을 확인해야 한다'); }
+  for (const i of allIdx(/Clipboard\]::GetText|Clipboard\]::GetDataObject/)) {
+    if (!inside(i, [copyFn, backupFn])) { bad++; console.error('native/selection.ps1 클립보드 읽기는 Backup-Clipboard, Invoke-CopyFallback 안에서만 한다'); break; }
+  }
+  if (allIdx(/Invoke-CopyFallback \$/).length !== 1) { bad++; console.error('native/selection.ps1 Invoke-CopyFallback 호출은 드래그 종료 처리 한 곳뿐이어야 한다'); }
+}
+if (allIdx(/\[Console\]::Out\.WriteLine/).length !== 1) { bad++; console.error('native/selection.ps1 출력은 Emit 한 곳에서만 한다'); }
+
 // 미지원 보고에는 text 필드가 없어야 한다.
 if (/type\s*=\s*'unsupported'[^}]*\btext\b/.test(ps)) { bad++; console.error('native/selection.ps1 unsupported 보고에 text 포함 금지'); }
 const html = fs.readFileSync(path.join(root, 'renderer', 'index.html'), 'utf8');
