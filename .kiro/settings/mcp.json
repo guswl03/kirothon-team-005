@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "cheatsheet-dev": {
+      "command": "node",
+      "args": ["scripts/mcp/cheatsheet-mcp.js"],
+      "disabled": false,
+      "autoApprove": ["build_prompt", "verify_result", "support_score", "project_status"]
+    }
+  }
+}

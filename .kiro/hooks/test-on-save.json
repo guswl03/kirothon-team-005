@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "저장한 영역의 테스트 실행",
+      "trigger": "PostFileSave",
+      "description": "src/ai는 test/ai와 test/core, src/main은 test/desktop처럼 저장한 파일 영역의 테스트만 실행하고 실패하면 에이전트에게 알린다.",
+      "matcher": "(src|test|scripts[\\\\/](hooks|mcp))[\\\\/].*\\.js$",
+      "action": {
+        "type": "command",
+        "command": "node scripts/hooks/test-on-save.js",
+        "timeout": 120
+      }
+    }
+  ]
+}
