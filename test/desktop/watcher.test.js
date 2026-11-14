@@ -12,8 +12,8 @@ const ri = (n) => Math.floor(rnd() * n);
 
 // ---- selectionWatcher ----
 test('parseLine: selection / unsupported / 이전 형식', () => {
-  assert.deepEqual(parseLine('{"type":"selection","text":"가나","pid":3}'), { type: 'selection', text: '가나', pid: 3 });
-  assert.deepEqual(parseLine('{"text":"가나","pid":3}'), { type: 'selection', text: '가나', pid: 3 });
+  assert.deepEqual(parseLine('{"type":"selection","text":"가나","pid":3}'), { type: 'selection', text: '가나', pid: 3, via: 'uia' });
+  assert.deepEqual(parseLine('{"text":"가나","pid":3}'), { type: 'selection', text: '가나', pid: 3, via: 'uia' });
   assert.deepEqual(parseLine('{"type":"unsupported","pid":9,"proc":"chrome"}'), { type: 'unsupported', pid: 9, proc: 'chrome' });
 });
 
@@ -54,7 +54,7 @@ test('watcher: 줄 단위로 나눠 전달하고 설정값을 인자로 넘기�
   assert.deepEqual(call.args.slice(-4), ['-IntervalMs', '500', '-StableCount', '3']);
   child.stdout.emit('data', '{"type":"selection","text":"안');       // 줄이 쪼개져 도착
   child.stdout.emit('data', '녕","pid":4}\n{"type":"unsupported","pid":5,"proc":"p"}\nbad\n');
-  assert.deepEqual(got, [{ text: '안녕', pid: 4 }]);
+  assert.deepEqual(got, [{ text: '안녕', pid: 4, via: 'uia' }]);
   assert.deepEqual(uns, [{ pid: 5, proc: 'p' }]);
   w.stop();
   assert.equal(child.killed, true);
@@ -160,4 +160,67 @@ test('watcher: 헬퍼가 예기치 않게 종료되면 알리고, stop()으로 �
   const w2 = createSelectionWatcher({ scriptPath: 'x', onError: (e) => errors.push(e.message), spawnImpl: () => c2 });
   w2.start(); w2.stop(); c2.emit('exit', 0);
   assert.equal(errors.length, 1);
+});
+
+// ---- 메신저 복사 대체 경로 ----
+test('복사 옵션: 꺼져 있으면 -CopyFallback 인자를 넘기지 않고, -Sta는 -File 앞에 둔다', () => {
+  const { buildArgs } = require('../../src/main/selectionWatcher');
+  const off = buildArgs({ scriptPath: 'x.ps1', intervalMs: 350, stableCount: 2 });
+  assert.ok(!off.includes('-CopyFallback') && !off.includes('-CopyApps'));
+  assert.ok(off.indexOf('-Sta') >= 0 && off.indexOf('-Sta') < off.indexOf('-File'));
+  assert.equal(off[off.indexOf('-File') + 1], 'x.ps1');
+  assert.ok(!buildArgs({ scriptPath: 'x', intervalMs: 1, stableCount: 1, copyFallback: 'true' }).includes('-CopyFallback'));
+});
+
+test('복사 옵션: 켜면 허용 메신저 목록만 넘기고, 잘못된 이름은 버린다', () => {
+  const { buildArgs, COPY_APPS } = require('../../src/main/selectionWatcher');
+  const on = buildArgs({ scriptPath: 'x', intervalMs: 350, stableCount: 2, copyFallback: true });
+  assert.deepEqual(on.slice(-3), ['-CopyFallback', '-CopyApps', COPY_APPS.join(',')]);
+  assert.ok(COPY_APPS.includes('KakaoTalk') && COPY_APPS.includes('Discord'));
+  assert.ok(!COPY_APPS.some((a) => /^(cmd|powershell|pwsh|WindowsTerminal|Code|Kiro)$/i.test(a)), '터미널·편집기는 허용하지 않는다');
+  const bad = buildArgs({ scriptPath: 'x', intervalMs: 1, stableCount: 1, copyFallback: true, copyApps: ['KakaoTalk', 'a,b', 'x;rm', 5, ''] });
+  assert.equal(bad[bad.indexOf('-CopyApps') + 1], 'KakaoTalk');
+  assert.ok(!buildArgs({ scriptPath: 'x', intervalMs: 1, stableCount: 1, copyFallback: true, copyApps: [] }).includes('-CopyFallback'));
+});
+
+test('복사 옵션: via는 copy만 구분하고 나머지는 uia로 본다', () => {
+  assert.equal(parseLine('{"type":"selection","text":"a","pid":1,"via":"copy"}').via, 'copy');
+  assert.equal(parseLine('{"type":"selection","text":"a","pid":1,"via":"evil"}').via, 'uia');
+  assert.equal(parseLine('{"type":"selection","text":"a","pid":1}').via, 'uia');
+});
+
+test('watcher: start마다 옵션을 다시 읽고, restart는 실행 중일 때만 다시 띄운다', () => {
+  if (process.platform !== 'win32') return;
+  const calls = [];
+  let copy = false;
+  const w = createSelectionWatcher({
+    scriptPath: 'x', getOptions: () => ({ copyFallback: copy }),
+    spawnImpl: (cmd, args) => { calls.push(args); const c = fakeProc(); c.stderr = Object.assign(new EventEmitter(), { resume() {} }); return c; },
+  });
+  w.restart();
+  assert.equal(calls.length, 0);
+  w.start();
+  copy = true;
+  w.restart();
+  assert.equal(calls.length, 2);
+  assert.ok(!calls[0].includes('-CopyFallback'));
+  assert.ok(calls[1].includes('-CopyFallback'));
+  w.stop();
+});
+
+test('설정: copyFallback은 명시적 true만 인정한다', () => {
+  const { sanitize, DEFAULTS } = require('../../src/main/settings');
+  assert.equal(DEFAULTS.copyFallback, false);
+  for (const v of ['true', 1, 'yes', null, undefined, {}]) assert.equal(sanitize({ copyFallback: v }).copyFallback, false);
+  assert.equal(sanitize({ copyFallback: true }).copyFallback, true);
+});
+test('compat: 커서 아래 요소에서 읽힘, 메신저는 복사 옵션 필요로 표시, 텍스트는 출력하지 않음', () => {
+  const point = formatRow({ ok: true, proc: 'Discord', pattern: true, selLen: 0, pointOk: true, pointProc: 'Discord', pointPattern: true, pointSelLen: 9, pointDepth: 2, pointCls: 'Chrome_RenderWidgetHostHWND', text: '비밀' });
+  assert.match(point, /^\| Discord \| - \| 지원\(커서 아래\) \|/);
+  assert.match(point, /상위 2단계/);
+  assert.ok(!point.includes('비밀'));
+  const kakao = formatRow({ ok: true, proc: 'KakaoTalk', pattern: true, selLen: 0, pointOk: true, pointProc: 'KakaoTalk', pointPattern: false });
+  assert.match(kakao, /\| KakaoTalk \| - \| 복사 옵션 필요 \|/);
+  assert.match(formatRow({ ok: true, proc: 'notepad', pattern: false, pointOk: true, pointProc: 'notepad', pointPassword: true, pointSelLen: 3 }), /제외\(비밀번호란\)/);
+  assert.match(formatRow({ ok: false, pointOk: true, pointProc: 'x', pointPattern: false }), /\| x \| - \| 미지원 \|/);
 });

@@ -75,3 +75,16 @@
 1. THE App SHALL 선택 텍스트를 로그, 파일, 콘솔, 오류 메시지에 남기지 않는다.
 2. THE Probe SHALL 진단 출력에 길이와 컨트롤 종류만 포함한다.
 3. WHEN `npm run check`를 실행하면, THE check SHALL PowerShell 헬퍼와 메인 프로세스의 위험 패턴을 점검한다.
+
+### Requirement 7: 메신저 드래그 감지 (카카오톡, 디스코드)
+
+**User Story:** As a 메신저로 대화하는 사용자, I want 카카오톡과 디스코드의 대화 말풍선을 드래그만 해도 결과 창이 뜨기를, so that 복사하고 단축키를 누르는 과정을 줄일 수 있다.
+
+#### Acceptance Criteria
+
+1. WHEN 드래그가 끝났는데 포커스된 컨트롤에서 선택을 읽지 못하면, THE Selection_Watcher SHALL 커서 아래 요소부터 같은 프로세스 안에서 상위 10단계까지 TextPattern 선택을 찾는다.
+2. THE App SHALL 메신저 드래그 복사 옵션(`copyFallback`)을 기본 꺼짐으로 두고, 사용자가 켤 때 동의 창으로 키 입력 전송과 클립보드 기록 영향을 안내한다. WHEN 사용자가 자동 분석을 켜고 이 옵션이 꺼져 있으면, THE App SHALL 같은 동의 창을 '다시 묻지 않기'와 함께 띄운다.
+3. WHILE 옵션이 켜져 있는 동안, WHEN UI Automation이 실패한 드래그가 허용 메신저에서 끝나면, THE Selection_Watcher SHALL Ctrl+C를 한 번 보내고 클립보드가 바뀐 경우에만 텍스트를 받아 원래 클립보드로 되돌린다.
+4. THE Selection_Watcher SHALL 주기적 폴링, 허용 목록 밖의 앱, 전면 창이 다른 앱일 때, 수정키를 누르고 있을 때, 비밀번호란, 되돌릴 수 없는 클립보드 형식이 있을 때 키 입력을 보내지 않는다.
+5. IF 허용 메신저에서 UI Automation이 실패했고 옵션이 꺼져 있으면, THEN THE App SHALL 미지원 안내에 트레이 옵션을 함께 알린다.
+6. WHEN `npm run check`를 실행하면, THE check SHALL 키 입력과 클립보드 읽기가 정해진 함수 안에서 허용 확인 뒤에만 일어나는지 점검한다.

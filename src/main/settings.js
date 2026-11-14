@@ -3,7 +3,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const DEFAULTS = { autoAnalyze: false, consentAccepted: false, consentProvider: '', tone: 'casual', provider: 'auto' };
+// copyFallback: 메신저(카카오톡·디스코드) 드래그에서 앱이 대신 Ctrl+C로 복사하는 옵션. 사용자가 동의하고 켠 경우만 true.
+// copyFallbackNoAsk: 자동 분석을 켤 때 메신저 드래그 복사를 묻는 창에서 '다시 묻지 않기'를 고른 경우 true.
+const DEFAULTS = { autoAnalyze: false, consentAccepted: false, consentProvider: '', copyFallback: false, copyFallbackNoAsk: false, tone: 'casual', provider: 'auto' };
 // 예전 설정 파일의 'offline'은 sanitize에서 'auto'로 바뀐다.
 const PROVIDERS = ['auto', 'kiro', 'openai'];
 // 동의할 때 안내한 실제 공급자 id. 다른 공급자로 바뀌면 다시 동의를 받는다. 예전 설정(값 없음)은 다시 동의 대상이다.
@@ -15,6 +17,8 @@ function sanitize(obj) {
     autoAnalyze: o.autoAnalyze === true,
     consentAccepted: o.consentAccepted === true,
     consentProvider: CONSENT_PROVIDERS.includes(o.consentProvider) ? o.consentProvider : '',
+    copyFallback: o.copyFallback === true,
+    copyFallbackNoAsk: o.copyFallbackNoAsk === true,
     tone: o.tone === 'work' ? 'work' : 'casual',
     provider: PROVIDERS.includes(o.provider) ? o.provider : 'auto',
   };
@@ -39,4 +43,9 @@ function needsConsent(s, providerId) {
   return !(s && s.consentAccepted === true && s.consentProvider && s.consentProvider === providerId);
 }
 
-module.exports = { createSettings, sanitize, needsConsent, DEFAULTS, PROVIDERS };
+/** 자동 분석을 켤 때 메신저 드래그 복사 동의 창을 띄울지. 이미 켰거나 '다시 묻지 않기'를 골랐으면 묻지 않는다. */
+function shouldAskCopyFallback(s, platform = process.platform) {
+  return platform === 'win32' && !!s && s.copyFallback !== true && s.copyFallbackNoAsk !== true;
+}
+
+module.exports = { createSettings, sanitize, needsConsent, shouldAskCopyFallback, DEFAULTS, PROVIDERS };
