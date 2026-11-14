@@ -7,7 +7,7 @@ const { createService } = require('../core/service');
 const { createDedupe, validateInput } = require('../core/textGuard');
 const { createKiroProvider, checkKiro } = require('../ai/providers/kiro');
 const { createOpenAiProvider } = require('../ai/providers/openai');
-const { createSettings, needsConsent, PROVIDERS } = require('./settings');
+const { createSettings, needsConsent, shouldAskCopyFallback, PROVIDERS } = require('./settings');
 const { createSelectionWatcher, COPY_APPS } = require('./selectionWatcher');
 const { createUnsupportedGate } = require('./unsupportedGate');
 const { placeWindow } = require('./windowPlacement');
@@ -158,6 +158,12 @@ async function setAutoAnalyze(on) {
       if (response !== 0) { pushState(); return false; }
       settings.set({ consentAccepted: true, consentProvider: p.id });
     }
+    // 카카오톡·디스코드 말풍선은 이 옵션이 있어야 드래그로 읽히므로, 자동 분석을 켤 때 함께 묻는다.
+    if (shouldAskCopyFallback(settings.get())) {
+      const r = await askCopyConsent({ fromAuto: true });
+      if (r.accepted) settings.set({ copyFallback: true });
+      else if (r.noAsk) settings.set({ copyFallbackNoAsk: true });
+    }
     settings.set({ autoAnalyze: true });
     watcher.start();
   } else {
@@ -228,23 +234,31 @@ function analyzeClipboard() {
 // ---------- 메신저 드래그 복사(옵션) ----------
 // UI Automation으로 선택을 못 읽는 메신저(카카오톡·디스코드)에서, 드래그가 끝나면 앱이 대신 Ctrl+C를 눌러
 // 복사하고 원래 클립보드를 되돌린다. 대상 앱에 키 입력을 보내므로 기본은 꺼져 있고, 켤 때 동의를 받는다.
+/**
+ * 메신저 드래그 복사 동의 창. fromAuto면 자동 분석을 켤 때 띄우는 창으로, '다시 묻지 않기'를 함께 보여 준다.
+ * @returns {Promise<{accepted:boolean, noAsk:boolean}>}
+ */
+async function askCopyConsent({ fromAuto = false } = {}) {
+  const { response, checkboxChecked } = await dialog.showMessageBox(win && win.isVisible() ? win : undefined, {
+    type: 'question', buttons: ['동의하고 켜기', fromAuto ? '지금은 안 함' : '취소'], defaultId: 1, cancelId: 1, title: '메신저 드래그 복사',
+    ...(fromAuto ? { checkboxLabel: '다시 묻지 않기 (트레이 메뉴에서 언제든 켤 수 있어요)', checkboxChecked: false } : {}),
+    message: '카카오톡과 디스코드에서 드래그한 내용을 앱이 대신 복사해요',
+    detail: [
+      '• 이 두 메신저는 선택한 텍스트를 직접 알려 주지 않는 경우가 있어요.',
+      '• 이 기능을 켜면, 그 메신저에서 드래그가 끝났을 때 앱이 Ctrl+C를 한 번 눌러 복사하고 바로 원래 클립보드로 되돌려요.',
+      '• 다른 앱에는 키 입력을 보내지 않아요. Shift·Ctrl·Alt를 누르고 있을 때도 보내지 않아요.',
+      '• Windows 클립보드 기록(Win+V)이나 클립보드 관리 앱을 쓰고 있다면, 대신 복사한 내용이 그 기록에 남을 수 있어요.',
+      '• 텍스트, HTML, 서식(RTF), 이미지, 파일 목록 외의 클립보드 형식이 있으면 복사하지 않아요.',
+      '• 복사한 내용은 자동 분석과 같은 방식으로 검색과 AI 처리에 쓰이고, 파일이나 로그에 남지 않아요.',
+      '• 나중에 트레이 메뉴의 "메신저 드래그 복사"에서 끄거나 켤 수 있어요.',
+    ].join('\n'),
+  });
+  return { accepted: response === 0, noAsk: fromAuto && response !== 0 && checkboxChecked === true };
+}
+
 async function setCopyFallback(on) {
   if (on && process.platform !== 'win32') return false;
-  if (on) {
-    const { response } = await dialog.showMessageBox(win && win.isVisible() ? win : undefined, {
-      type: 'question', buttons: ['동의하고 켜기', '취소'], defaultId: 1, cancelId: 1, title: '메신저 드래그 복사',
-      message: '카카오톡과 디스코드에서 드래그한 내용을 앱이 대신 복사해요',
-      detail: [
-        '• 이 두 메신저는 선택한 텍스트를 직접 알려 주지 않는 경우가 있어요.',
-        '• 이 기능을 켜면, 그 메신저에서 드래그가 끝났을 때 앱이 Ctrl+C를 한 번 눌러 복사하고 바로 원래 클립보드로 되돌려요.',
-        '• 다른 앱에는 키 입력을 보내지 않아요. Shift·Ctrl·Alt를 누르고 있을 때도 보내지 않아요.',
-        '• Windows 클립보드 기록(Win+V)이나 클립보드 관리 앱을 쓰고 있다면, 대신 복사한 내용이 그 기록에 남을 수 있어요.',
-        '• 텍스트, HTML, 서식(RTF), 이미지, 파일 목록 외의 클립보드 형식이 있으면 복사하지 않아요.',
-        '• 복사한 내용은 자동 분석과 같은 방식으로 검색과 AI 처리에 쓰이고, 파일이나 로그에 남지 않아요.',
-      ].join('\n'),
-    });
-    if (response !== 0) { rebuildTray(); return false; }
-  }
+  if (on && !(await askCopyConsent()).accepted) { rebuildTray(); return false; }
   settings.set({ copyFallback: on === true });
   if (watcher) watcher.restart();
   pushState();

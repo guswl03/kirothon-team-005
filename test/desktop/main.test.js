@@ -21,7 +21,7 @@ test('창 위치: 항상 작업 영역 안에 들어온다', () => {
 
 test('설정: 알 수 없는 값은 기본값으로 정리하고, 동의는 명시적 true만 인정', () => {
   assert.deepEqual(sanitize({ autoAnalyze: 'yes', consentAccepted: 1, tone: 'x', provider: 'evil' }),
-    { autoAnalyze: false, consentAccepted: false, consentProvider: '', copyFallback: false, tone: 'casual', provider: 'auto' });
+    { autoAnalyze: false, consentAccepted: false, consentProvider: '', copyFallback: false, copyFallbackNoAsk: false, tone: 'casual', provider: 'auto' });
   assert.equal(sanitize(null).tone, 'casual');
 });
 
@@ -36,7 +36,7 @@ test('설정 저장: 선택 텍스트 같은 다른 필드는 저장하지 않�
   s.set({ tone: 'work', text: '비밀 텍스트', selected: 'x' });
   const raw = fs.readFileSync(path.join(dir, 'settings.json'), 'utf8');
   assert.ok(!raw.includes('비밀'));
-  assert.deepEqual(Object.keys(JSON.parse(raw)).sort(), ['autoAnalyze', 'consentAccepted', 'consentProvider', 'copyFallback', 'provider', 'tone']);
+  assert.deepEqual(Object.keys(JSON.parse(raw)).sort(), ['autoAnalyze', 'consentAccepted', 'consentProvider', 'copyFallback', 'copyFallbackNoAsk', 'provider', 'tone']);
   assert.equal(createSettings(dir).get().tone, 'work');
   fs.rmSync(dir, { recursive: true, force: true });
 });
@@ -60,4 +60,14 @@ test('동의: 동의한 공급자와 지금 공급자가 같을 때만 유효', 
   assert.equal(sanitize({ consentProvider: 'offline' }).consentProvider, '');
   assert.equal(sanitize({ consentProvider: 'evil' }).consentProvider, '');
   assert.equal(sanitize({ consentProvider: 'openai' }).consentProvider, 'openai');
+});
+
+test('자동 분석을 켤 때 메신저 드래그 복사를 물을지: Windows, 꺼져 있음, 다시 묻지 않기 아님일 때만', () => {
+  const { shouldAskCopyFallback, sanitize } = require('../../src/main/settings');
+  assert.equal(shouldAskCopyFallback(sanitize({}), 'win32'), true);
+  assert.equal(shouldAskCopyFallback(sanitize({ copyFallback: true }), 'win32'), false);
+  assert.equal(shouldAskCopyFallback(sanitize({ copyFallbackNoAsk: true }), 'win32'), false);
+  assert.equal(shouldAskCopyFallback(sanitize({}), 'darwin'), false);
+  assert.equal(shouldAskCopyFallback(null, 'win32'), false);
+  assert.equal(sanitize({ copyFallbackNoAsk: 'true' }).copyFallbackNoAsk, false);
 });
