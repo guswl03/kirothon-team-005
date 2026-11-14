@@ -66,10 +66,9 @@
 | `build_prompt` | 모델에 실제로 보내는 프롬프트 확인(이스케이프 포함) |
 | `verify_result` | 모델 응답을 앱 스키마로 정규화, 강등 수와 부족분 확인 |
 | `support_score` | 문장과 출처 본문의 근거 점수 |
-| `offline_preview` | 검색 + 오프라인 생성 + 정규화 전체 실행 |
 | `project_status` | 브랜치 역할, 남은 spec 작업, 선택적으로 테스트·보안 점검 |
 
-`ai-search`, `ui-docs`, `security-reviewer` agent가 `mcpServers`로 이 서버를 선언한다. 워크스페이스 전체에서 쓰려면 `.kiro/settings/mcp.json`에 아래를 추가한다. 네트워크를 쓰는 `wiki_search`, `offline_preview`는 자동 승인에서 뺐다.
+`ai-search`, `ui-docs`, `security-reviewer` agent가 `mcpServers`로 이 서버를 선언한다. 워크스페이스 전체에서 쓰려면 `.kiro/settings/mcp.json`에 아래를 추가한다. 네트워크를 쓰는 `wiki_search`는 자동 승인에서 뺐다.
 
 ```json
 {

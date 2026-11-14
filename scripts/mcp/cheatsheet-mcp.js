@@ -7,7 +7,6 @@ const readline = require('node:readline');
 const { searchTopic, keywordQuery } = require('../../src/ai/search');
 const prompt = require('../../src/ai/prompt');
 const { normalizeResult, normalizeAnswers, extractJson, supportScore, SUPPORT_MIN } = require('../../src/ai/schema');
-const { createOfflineProvider } = require('../../src/ai/providers/offline');
 const hooks = require('../hooks/lib');
 
 const SERVER = { name: 'cheatsheet-dev', version: '0.1.0' };
@@ -74,23 +73,6 @@ const TOOLS = [
     async run({ text, extract }) {
       const score = supportScore(str(text, 400), str(extract, 5000));
       return { score: Number(score.toFixed(3)), supportMin: SUPPORT_MIN, passes: score >= SUPPORT_MIN };
-    },
-  },
-  {
-    name: 'offline_preview',
-    description: '외부 AI 없이 검색 + 오프라인 간이 모드 + 정규화까지 앱의 전체 파이프라인을 실행해 개수와 앞부분 문장을 보여 준다.',
-    inputSchema: { type: 'object', properties: { text: { type: 'string' }, tone: { type: 'string', enum: ['casual', 'work'] } }, required: ['text'] },
-    async run({ text, tone: tn }) {
-      const t = str(text);
-      const found = await searchTopic(t);
-      const ctx = { text: t, tone: tone(tn), sources: found.sources, topicHint: '' };
-      const raw = await createOfflineProvider().generate({ ctx, kind: 'full' });
-      const r = normalizeResult(JSON.parse(raw), found.sources);
-      return {
-        search: found.status, sources: found.sources.map((s) => s.name),
-        counts: { statements: r.statements.length, questions: r.questions.length, topicSwitches: r.topicSwitches.length, keyFacts: r.keyFacts.length },
-        shortfalls: r.shortfalls, firstStatements: r.statements.slice(0, 3),
-      };
     },
   },
   {

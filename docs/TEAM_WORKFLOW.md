@@ -28,7 +28,7 @@
 src/
   main/        A  Electron 메인, 트레이, 설정, 선택 감지 프로세스
   native/      A  UI Automation PowerShell 헬퍼
-  ai/          B  prompt, search, schema, providers(kiro, openai, offline)
+  ai/          B  prompt, search, schema, providers(kiro, openai)
   core/        공유  service(파이프라인), textGuard
   renderer/    C  결과 창 UI
 test/

@@ -25,6 +25,11 @@ test('설정: 알 수 없는 값은 기본값으로 정리하고, 동의는 명�
   assert.equal(sanitize(null).tone, 'casual');
 });
 
+test('설정: 없어진 오프라인 공급자를 저장한 예전 설정은 auto로 바뀐다', () => {
+  assert.equal(sanitize({ provider: 'offline' }).provider, 'auto');
+  assert.equal(sanitize({ provider: 'kiro' }).provider, 'kiro');
+});
+
 test('설정 저장: 선택 텍스트 같은 다른 필드는 저장하지 않는다', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-'));
   const s = createSettings(dir);

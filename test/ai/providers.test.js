@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
-const { createKiroProvider } = require('../../src/ai/providers/kiro');
+const { createKiroProvider, checkKiro, resolveKiroCommand } = require('../../src/ai/providers/kiro');
 const { createOpenAiProvider } = require('../../src/ai/providers/openai');
 
 function fakeSpawn({ stdout = '', stderr = '', code = 0, error }) {
@@ -87,6 +87,57 @@ test('Kiro: 설치되지 않은 경우 이해하기 쉬운 오류', async () => 
 test('Kiro: 비정상 종료 코드는 오류', async () => {
   const p = createKiroProvider({ spawnImpl: fakeSpawn({ code: 1, stderr: 'auth' }) });
   await assert.rejects(p.generate({ prompt: 'a' }), /종료 코드 1/);
+});
+
+function fakeWhoami({ code = 0, error } = {}) {
+  const calls = [];
+  const fn = (cmd, args, opts) => {
+    calls.push({ cmd, args, opts });
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.kill = () => {};
+    setImmediate(() => { if (error) child.emit('error', error); else { child.stdout.emit('data', 'Email: someone@example.com'); child.emit('close', code); } });
+    return child;
+  };
+  fn.calls = calls;
+  return fn;
+}
+
+test('checkKiro: whoami 성공이면 connected(로그인 세션), 셸 없이 whoami만 실행', async () => {
+  const spawnImpl = fakeWhoami({ code: 0 });
+  const r = await checkKiro({ spawnImpl, command: 'kiro-cli', env: {} });
+  assert.equal(r.status, 'connected');
+  assert.equal(r.auth, 'login');
+  assert.deepEqual(spawnImpl.calls[0].args, ['whoami']);
+  assert.equal(spawnImpl.calls[0].opts.shell, false);
+  assert.ok(!JSON.stringify(r).includes('someone@example.com'), '계정 정보는 결과에 남기지 않는다');
+});
+
+test('checkKiro: 미설치, 로그인 안 됨, API 키만 있음을 구분한다', async () => {
+  const enoent = Object.assign(new Error('x'), { code: 'ENOENT' });
+  assert.equal((await checkKiro({ spawnImpl: fakeWhoami({ error: enoent }), command: 'k', env: {} })).status, 'not_installed');
+  assert.equal((await checkKiro({ spawnImpl: fakeWhoami({ code: 1 }), command: 'k', env: {} })).status, 'not_logged_in');
+  const key = await checkKiro({ spawnImpl: fakeWhoami({ code: 1 }), command: 'k', env: { KIRO_API_KEY: 'x' } });
+  assert.equal(key.status, 'connected');
+  assert.equal(key.auth, 'api_key');
+});
+
+test('checkKiro: 응답이 없으면 시간 초과로 error', async () => {
+  const spawnImpl = () => { const c = new EventEmitter(); c.kill = () => {}; return c; };
+  assert.equal((await checkKiro({ spawnImpl, command: 'k', env: {}, timeoutMs: 50 })).status, 'error');
+});
+
+test('resolveKiroCommand: KIRO_CLI_PATH > PATH > Windows 기본 설치 위치', () => {
+  const path = require('node:path');
+  const local = path.join('C:\\Users\\u\\AppData\\Local', 'Kiro-Cli', 'kiro-cli.exe');
+  const has = (set) => (p) => set.includes(p);
+  assert.equal(resolveKiroCommand({ env: { KIRO_CLI_PATH: 'X:\\k.exe' }, exists: has([]), platform: 'win32' }), 'X:\\k.exe');
+  assert.equal(resolveKiroCommand({ env: { LOCALAPPDATA: 'C:\\Users\\u\\AppData\\Local', PATH: '' }, exists: has([local]), platform: 'win32' }), local);
+  if (process.platform === 'win32') {   // PATH 구분자가 ';'인 환경에서만 의미 있는 경우
+    const onPath = path.join('D:\\bin', 'kiro-cli.exe');
+    assert.equal(resolveKiroCommand({ env: { LOCALAPPDATA: 'C:\\Users\\u\\AppData\\Local', PATH: 'D:\\bin' }, exists: has([local, onPath]), platform: 'win32' }), 'kiro-cli');
+  }
+  assert.equal(resolveKiroCommand({ env: {}, exists: has([]), platform: 'linux' }), 'kiro-cli');
 });
 
 test('OpenAI 호환: 미설정이면 거부, http(원격)는 거부', async () => {

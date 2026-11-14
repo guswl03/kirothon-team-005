@@ -9,7 +9,7 @@
 - **App**: 대화 치트키 데스크톱 애플리케이션
 - **Selection_Watcher**: Windows UI Automation으로 선택된 텍스트만 읽는 감지 모듈
 - **Search_Module**: 위키백과 공개 API로 관련 정보와 출처를 수집하는 모듈
-- **Provider**: 응답을 생성하는 AI 처리 방식(Kiro CLI, OpenAI 호환, 오프라인 간이 모드)
+- **Provider**: 응답을 생성하는 AI 처리 방식(Kiro CLI 기본, OpenAI 호환 대체)
 - **Service**: 검증, 검색, 생성, 정규화를 조율하는 파이프라인
 - **Result_Window**: 결과를 보여주는 작은 창
 
@@ -120,7 +120,7 @@
 
 #### Acceptance Criteria
 
-1. WHERE KIRO_API_KEY가 설정되어 있으면, THE App SHALL Kiro CLI 비대화형 모드를 기본 Provider로 사용한다.
-2. WHERE OpenAI 호환 설정이 있으면, THE App SHALL 해당 Provider를 대체 경로로 사용한다.
-3. IF 외부 AI 설정이 없으면, THEN THE App SHALL 외부 전송 없는 오프라인 간이 모드로 동작하고 그 사실을 표시한다.
+1. WHERE kiro-cli 로그인 세션이나 KIRO_API_KEY가 있으면, THE App SHALL Kiro CLI 비대화형 모드를 기본 Provider로 사용한다.
+2. WHERE Kiro가 연결되지 않았고 OpenAI 호환 설정이 있으면, THE App SHALL 해당 Provider를 대체 경로로 사용한다.
+3. IF 사용할 수 있는 AI가 없으면, THEN THE App SHALL 문장을 만들지 않고 Kiro 연결 상태와 연결 방법을 표시한다. (오프라인 간이 모드는 제거했다. 상세는 `.kiro/specs/ai-search-quality` Requirement 8)
 4. THE App SHALL Kiro 구독이 서비스용 모델 API를 제공한다고 가정하지 않는다.
