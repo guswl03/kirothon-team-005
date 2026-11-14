@@ -24,6 +24,8 @@ coverage/
 *.log
 # Kiro session data should not be committed
 .kiro/session-state/
+# Kiro workflow 실행 산출물(상태 파일, 중간 보고서)
+.kiro/workflow-output/
 # Genuine generated app output can extend this file
 
 # build output
