@@ -84,7 +84,7 @@ function normalizeTerms(list, validIds) {
     const meaning = str(t.meaning, 300);
     const origin = str(t.origin, 200);
     return {
-      term: str(t.term, 40), meaning, origin, inThisText: str(t.inThisText, 200),
+      term: str(t.term, 40), meaning, origin, inThisText: str(t.inThisText, 200), example: str(t.example, 150),
       confidence: t.confidence === 'high' ? 'high' : 'low',
       sourceIds: sourceRefs(t.sourceIds, validIds, `${meaning} ${origin}`),
     };

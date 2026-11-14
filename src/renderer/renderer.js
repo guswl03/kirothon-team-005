@@ -75,7 +75,8 @@ function render() {
         : h('span', { class: t.confidence === 'high' ? 'badge gen' : 'badge est' }, t.confidence === 'high' ? 'AI 설명 · 출처 없음' : 'AI 추정 · 확실하지 않아요')),
     h('p', { class: 'text' }, t.meaning),
     t.origin ? h('p', { class: 'hint' }, `유래: ${t.origin}`) : null,
-    t.inThisText ? h('p', { class: 'inText' }, `이 문장에서는: ${t.inThisText}`) : null)));
+    t.inThisText ? h('p', { class: 'inText' }, `이 문장에서는: ${t.inThisText}`) : null,
+    t.example ? h('p', { class: 'hint' }, `예: ${t.example}`) : null)));
   const first = r.statements[0];
   $('heroText').textContent = first ? first.text : '활용할 문장을 만들지 못했어요.';
   $('heroMeta').replaceChildren(...(first ? [].concat(srcBadges(view.statementSourceIds(first))) : []));

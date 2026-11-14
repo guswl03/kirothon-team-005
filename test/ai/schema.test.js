@@ -117,6 +117,17 @@ test('terms: 뜻 없는 항목과 중복을 버리고, 확신도는 high만 인�
   assert.deepEqual(normalizeResult({}).terms, []);
 });
 
+test('terms: 예문(example)을 150자까지 남기고 없으면 빈 문자열', () => {
+  const r = normalizeResult({ terms: [{ term: '럭키비키', meaning: '긍정적으로 받아들이는 말', example: '비 와서 쉬는 날이네, 완전 럭키비키잖아' }, { term: 'x', meaning: 'y', example: 'z'.repeat(200) }, { term: 'a', meaning: 'b' }] });
+  assert.equal(r.terms[0].example, '비 와서 쉬는 날이네, 완전 럭키비키잖아');
+  assert.equal(r.terms[1].example.length, 150);
+  assert.equal(r.terms[2].example, '');
+});
+
+test('extractJson: 실측에서 나온 따옴표 없는 문자열 값은 파싱 오류로 거부한다', () => {
+  assert.throws(() => extractJson('{"questions":[{"question":같이 갈래요?,"answers":[]}]}'));
+});
+
 test('terms: 출처가 뜻풀이를 뒷받침할 때만 출처 연결을 남긴다', () => {
   const r = normalizeResult({
     terms: [
