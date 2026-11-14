@@ -126,20 +126,19 @@ function onEvent(ev) {
   if (ev.type === 'notice') { setNotice(ev.message); return; }
   if (ev.type === 'start') {
     state.reqId = ev.requestId; state.result = null; state.search = null; setError(''); setNotice('');
-    pending.clear(); state.fuSeq += 1; setFuBusy(false);
+    pending.clear(); state.fuSeq += 1; setFuBusy(false); hideQuick();
     $('fuOut').replaceChildren(); $('results').hidden = true; setTone(ev.tone); setBusy(true); return;
   }
   if (ev.requestId !== state.reqId) return;        // 이전 요청의 늦은 응답 무시
   switch (ev.type) {
     case 'stage':
-      if (ev.stage === 'searching') setStatus('관련 정보를 검색하는 중…');
-      else if (ev.stage === 'generating') setStatus(ev.provider ? `${ev.provider}로 문장을 만드는 중…` : '문장을 만드는 중…');
+      if (ev.stage === 'searching' || ev.stage === 'generating') setStatus(view.stageMessage(ev.stage, ev.providerId));
       else { setStatus(''); setBusy(false); }
       break;
-    case 'sources': renderSources(ev); break;
+    case 'sources': renderSources(ev); showQuick(ev.sources); break;
     case 'result':
       state.result = ev.result; $('providerNote').textContent = `생성: ${ev.provider}`;
-      showGeneratedBy(ev.providerId, ev.provider); setStatus(''); render(); setBusy(false); break;
+      showGeneratedBy(ev.providerId, ev.provider); setStatus(''); hideQuick(); render(); setBusy(false); break;
     case 'error': setStatus(''); setBusy(false); setError(ev.message); break;
     case 'regenerated':
       pending.finish(view.pendingKey(ev.kind, ev.index));
@@ -188,6 +187,19 @@ function renderKiroStatus(k) {
 }
 
 function setBusy(b) { state.busy = b; $('analyze').disabled = b; }
+
+// ---- 뜻 먼저 보기: 검색 결과가 오면 AI 생성 전에 첫 출처의 뜻을 짧게 보여 준다 ----
+const QUICK_KEY = 'aneuncheok.quickMeaning';
+function quickOn() { try { return localStorage.getItem(QUICK_KEY) !== 'off'; } catch { return true; } }
+function setQuickOn(on) { try { localStorage.setItem(QUICK_KEY, on ? 'on' : 'off'); } catch { /* 저장 불가면 이번 실행에만 적용 */ } }
+function hideQuick() { $('quickCard').hidden = true; }
+function showQuick(sources) {
+  const q = $('quick').checked ? view.quickMeaning(sources) : null;
+  if (!q) { hideQuick(); return; }
+  $('quickText').textContent = q.text;
+  $('quickSrc').textContent = `근거 ${q.sourceId} · ${q.name}`;
+  $('quickCard').hidden = false;
+}
 
 function setFuBusy(b) {
   state.fuBusy = b;
@@ -241,6 +253,8 @@ $('close').addEventListener('click', () => bridge.hide());
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') bridge.hide(); });
 $('auto').addEventListener('change', async (e) => { const on = await bridge.setAuto(e.target.checked); e.target.checked = Boolean(on); });
 $('provider').addEventListener('change', (e) => bridge.setProvider(e.target.value));
+$('quick').checked = quickOn();
+$('quick').addEventListener('change', (e) => { setQuickOn(e.target.checked); if (!e.target.checked) hideQuick(); });
 $('kiroCheck').addEventListener('click', () => bridge.checkKiro());
 document.querySelectorAll('input[name=tone]').forEach((r) => r.addEventListener('change', () => { if (state.result) bridge.setTone(tone()); }));
 $('fuBtn').addEventListener('click', submitFollowup);

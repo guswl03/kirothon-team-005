@@ -68,5 +68,31 @@
     return !e.shiftKey && !e.altKey;
   }
 
-  return { searchMessage, composeNotice, pendingKey, createPending, canSubmitFollowup, invalidTarget, statementSourceIds, isSubmitKey };
+  /** 진행 상태 문구. 내부 도구 이름(CLI 등) 대신 지금 하는 일을 말한다. */
+  function stageMessage(stage, providerId) {
+    if (stage === 'searching') return '어떤 얘기인지 찾아보는 중…';
+    if (stage === 'generating') return providerId === 'kiro' ? 'Kiro가 자연스럽게 꺼낼 말을 고르는 중…' : '자연스럽게 꺼낼 말을 고르는 중…';
+    return '';
+  }
+
+  /**
+   * 검색 결과 첫 출처에서 뜻을 짧게 뽑는다(AI 생성 전 바로 보여 주기용). 문장 단위로 maxChars까지 담고,
+   * 첫 문장부터 너무 길면 잘라 말줄임표를 붙인다. 출처가 없으면 null을 돌려 지어내지 않는다.
+   */
+  function quickMeaning(sources, maxChars = 140) {
+    const s = Array.isArray(sources) ? sources.find((x) => x && typeof x.extract === 'string' && x.extract.trim()) : null;
+    if (!s) return null;
+    const body = s.extract.replace(/\s+/g, ' ').trim();
+    const sentences = body.match(/[^.!?。]+[.!?。]+|[^.!?。]+$/g) || [body];
+    let text = '';
+    for (const raw of sentences) {
+      const next = (text ? `${text} ` : '') + raw.trim();
+      if (next.length > maxChars) break;
+      text = next;
+    }
+    if (!text) text = `${body.slice(0, maxChars).trim()}…`;
+    return { text, sourceId: s.id, name: s.name || s.id };
+  }
+
+  return { searchMessage, composeNotice, pendingKey, createPending, canSubmitFollowup, invalidTarget, statementSourceIds, isSubmitKey, stageMessage, quickMeaning };
 }));
