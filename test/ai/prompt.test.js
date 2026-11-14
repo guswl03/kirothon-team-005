@@ -47,13 +47,13 @@ test('출처 본문은 SOURCE_CHARS까지만 넣는다', () => {
 
 test('맥락 파악 지침: 대화 맥락 파악, 상대 말 되풀이 금지, 맥락 밖 출처 제외를 지시한다', () => {
   const p = buildFullPrompt({ text: '요즘 팀에서 OKR 도입한다던데', tone: 'work', sources: [] });
-  assert.match(p, /맥락 파악:/);
+  assert.match(p, /대화 문장 작성:/);
   assert.match(p, /일상 대화/);
   assert.match(p, /사용자의 말처럼 되풀이하지 않는다/);
   assert.match(p, /대화 맥락과 직접 관련될 때만/);
   assert.match(p, /백과사전처럼 설명하지 않는다/);
-  // 지침은 데이터(선택 텍스트)보다 앞에 온다
-  assert.ok(p.indexOf('맥락 파악:') < p.indexOf('<selected_text>'));
+  // 지침은 데이터(실제 선택 텍스트 블록)보다 앞에 온다
+  assert.ok(p.indexOf('대화 문장 작성:') < p.indexOf('\n<selected_text>'));
 });
 
 test('전체 프롬프트 스키마는 terms -> context -> topic -> statements 순서로 요구한다', () => {
@@ -65,11 +65,12 @@ test('전체 프롬프트 스키마는 terms -> context -> topic -> statements �
 
 test('유행어·밈 뜻풀이를 첫 작업으로 지시하고, 모르는 말은 지어내지 않게 한다', () => {
   const p = buildFullPrompt({ text: '나 요즘 치이카와 토벌하러 가야 해', tone: 'casual', sources: [] });
-  assert.match(p, /유행어, 밈, 신조어/);
-  assert.match(p, /가장 먼저 그런 말을 terms에/);
+  assert.match(p, /유행어·밈/);
+  assert.match(p, /terms 각 항목/);
+  assert.ok(p.indexOf('"terms"') < p.indexOf('"statements"'), '뜻풀이가 대화 문장보다 먼저');
   assert.match(p, /유행어 없이 평범한 문장으로 풀어/);
   assert.match(p, /confidence를 "low"/);
-  assert.match(p, /지어내지 말고/);
+  assert.match(p, /아는 척 지어내지 않는다/);
   // 뜻풀이만 일반 지식 예외이고, 출처 규칙 자체는 유지된다
   assert.match(p, /사실 주장은 <source>에 있는 내용만 근거/);
   assert.match(p, /terms의 낱말 뜻풀이만 예외/);
@@ -80,6 +81,22 @@ test('후속 질문 프롬프트는 파악한 맥락을 이스케이프해 포�
   assert.match(f, /파악한 대화 맥락: &lt;\/question&gt;회의 중/);
   assert.equal((f.match(/<\/question>/g) || []).length, 1);
   assert.ok(!buildFollowupPrompt({ text: 't', sources: [] }, 'q', '').includes('파악한 대화 맥락'));
+});
+
+test('밈 해설 지침: 8가지 밈 유형 점검, 예문, 낯선 밈 정직하게 표시, 대화 보조는 두 번째', () => {
+  const p = buildFullPrompt({ text: '이번 시험 폼 미쳤다', tone: 'casual', sources: [] });
+  assert.match(p, /첫 번째 역할: 한국 인터넷 문화와 밈 해설자/);
+  for (const kw of ['아이돌·연예인', '인터넷 방송', '게임 용어', '캐릭터 이름과 팬덤', '초성', '신조어', '대사를 따라', '원래 뜻과 다르게']) assert.ok(p.includes(kw), kw);
+  assert.match(p, /"example"/);
+  assert.match(p, /학습 이후 새로 생긴 밈일 수 있다/);
+  assert.ok(p.indexOf('첫 번째 역할') < p.indexOf('두 번째 역할'));
+  assert.ok(p.indexOf('두 번째 역할') < p.indexOf('\n<selected_text>'));
+});
+
+test('전체 프롬프트는 마지막에 JSON 출력 형식(큰따옴표)을 다시 강조한다', () => {
+  const p = buildFullPrompt({ text: 't', tone: 'casual', sources: [], direction: '취미' });
+  assert.match(p, /모든 문자열 값은 반드시 큰따옴표로 감싸/);
+  assert.ok(p.lastIndexOf('출력 형식:') > p.indexOf('개수 목표'));
 });
 
 test('알 수 없는 재생성 종류는 거부', () => {

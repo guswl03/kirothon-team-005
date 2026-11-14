@@ -24,9 +24,16 @@ function createService({ getProvider, search = searchTopic, emit = () => {} }) {
     return { id: seq, signal: ctrl.signal };
   }
 
+  /** 모델 호출 후 JSON 추출. 실측에서 가끔 깨진 JSON이 나와, 파싱에 실패하면 한 번만 다시 호출한다. */
   async function callModel(ctx, promptText, extra, signal, provider = getProvider()) {
-    const raw = await provider.generate({ prompt: promptText, signal, ctx, ...extra });
-    return extractJson(raw);
+    for (let attempt = 1; ; attempt++) {
+      const raw = await provider.generate({ prompt: promptText, signal, ctx, ...extra });
+      try {
+        return extractJson(raw);
+      } catch (e) {
+        if (attempt >= 2 || (signal && signal.aborted)) throw e;
+      }
+    }
   }
 
   async function generateFull(id, signal) {
