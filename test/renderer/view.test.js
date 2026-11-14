@@ -114,3 +114,31 @@ test('isSubmitKey: Enter만 누르면 분석, Shift+Enter와 한글 조합 중 E
   assert.equal(view.isSubmitKey({ key: 'a' }), false);
   assert.equal(view.isSubmitKey(null), false);
 });
+
+test('stageMessage: 검색·생성 단계 문구, 공급자 이름을 그대로 노출하지 않는다', () => {
+  assert.match(view.stageMessage('searching'), /찾아보는 중/);
+  assert.match(view.stageMessage('generating', 'kiro'), /^Kiro가 .*고르는 중/);
+  assert.match(view.stageMessage('generating', 'openai'), /고르는 중/);
+  assert.doesNotMatch(view.stageMessage('generating', 'kiro'), /CLI/);
+  assert.equal(view.stageMessage('done'), '');
+});
+
+test('quickMeaning: 첫 출처 본문에서 앞 문장을 짧게 뽑고 출처를 함께 준다', () => {
+  const sources = [{ id: 'S1', name: '위키백과(ko) - 양자 컴퓨터', extract: '양자 컴퓨터는 양자역학 현상을 이용하는 계산 기계이다. 큐비트를 쓴다. 세 번째 문장이다.' }];
+  const q = view.quickMeaning(sources, 45);   // 1·2문장(39자)까지만 들어가고 3문장째(50자)는 넘친다
+  assert.equal(q.sourceId, 'S1');
+  assert.equal(q.name, '위키백과(ko) - 양자 컴퓨터');
+  assert.equal(q.text, '양자 컴퓨터는 양자역학 현상을 이용하는 계산 기계이다. 큐비트를 쓴다.');
+});
+
+test('quickMeaning: 긴 첫 문장은 글자 수에서 자르고 말줄임표를 붙인다', () => {
+  const q = view.quickMeaning([{ id: 'S1', name: 'n', extract: '가'.repeat(300) }], 100);
+  assert.equal(q.text.length, 101);
+  assert.ok(q.text.endsWith('…'));
+});
+
+test('quickMeaning: 출처가 없거나 본문이 비면 null (지어내지 않음)', () => {
+  assert.equal(view.quickMeaning([]), null);
+  assert.equal(view.quickMeaning(null), null);
+  assert.equal(view.quickMeaning([{ id: 'S1', name: 'n', extract: '   ' }]), null);
+});
