@@ -89,6 +89,19 @@ details { margin-top:10px; }
 summary { cursor:pointer; color:var(--sub); font-size:12px; }
 summary:hover { color:var(--ink); }
 
+/* .input label { display:block }보다 우선해야 스위치 모양이 유지된다 */
+.input label.switch.opt { display:flex; align-items:center; gap:8px; margin:12px 0 0; font-weight:600; color:var(--ink); }
+.switch .track { flex:none; }
+
+/* 뜻 먼저 보기 카드 */
+.quickCard {
+  margin-top:12px; padding:12px 14px; border-radius:12px; background:var(--card);
+  border:1px solid var(--line); border-left:3px solid var(--brand);
+}
+.quickCard h2 { margin:0 0 6px; color:var(--brand); }
+.quickText { font-size:14px; line-height:1.6; margin:0 0 8px; }
+.quickCard .meta { margin-bottom:0; }
+
 /* 상태·배너 */
 .status {
   margin:12px 0; padding:9px 12px; border-radius:8px; background:var(--brand-soft);
