@@ -27,12 +27,17 @@ function args(argv) {
   return { runs, search: !has('--no-search'), offline: has('--offline') };
 }
 
-function kiroReady() {
-  const cmd = process.env.KIRO_CLI_PATH || 'kiro-cli';
-  const r = spawnSync(cmd, ['--version'], { shell: false, windowsHide: true, encoding: 'utf8', timeout: 15000 });
-  if (r.error) return { ok: false, why: `${cmd}를 실행할 수 없어요(${r.error.code || r.error.message}). 설치 후 PATH에 추가하거나 KIRO_CLI_PATH를 설정하세요.` };
-  if (!process.env.KIRO_API_KEY) return { ok: false, why: 'KIRO_API_KEY 환경 변수가 없어요. 로그인 세션이 있다면 KIRO_API_KEY 없이도 될 수 있지만, 앱은 키가 있을 때만 Kiro를 기본으로 씁니다.' };
-  return { ok: true, version: String(r.stdout || '').trim().split(/\r?\n/)[0] };
+/** kiro-cli 실행 가능 여부와 인증 방식. 로그인 세션(kiro-cli login)이 KIRO_API_KEY보다 먼저 쓰인다. */
+function kiroReady(spawn = spawnSync, env = process.env) {
+  const cmd = env.KIRO_CLI_PATH || 'kiro-cli';
+  const opts = { shell: false, windowsHide: true, encoding: 'utf8', timeout: 15000 };
+  const v = spawn(cmd, ['--version'], opts);
+  if (v.error) return { ok: false, why: `${cmd}를 실행할 수 없어요(${v.error.code || v.error.message}). 설치 후 PATH에 추가하거나 KIRO_CLI_PATH를 설정하세요.` };
+  const version = String(v.stdout || '').trim().split(/\r?\n/)[0];
+  const who = spawn(cmd, ['whoami'], opts);
+  if (!who.error && who.status === 0) return { ok: true, version, auth: '로그인 세션' };
+  if (env.KIRO_API_KEY) return { ok: true, version, auth: 'KIRO_API_KEY' };
+  return { ok: false, why: '인증 정보가 없어요. kiro-cli login으로 로그인하거나 KIRO_API_KEY를 설정하세요.' };
 }
 
 const pct = (n, d) => (d ? `${Math.round((n / d) * 100)}%` : '-');
@@ -50,7 +55,7 @@ async function main() {
   } else {
     const ready = kiroReady();
     if (!ready.ok) { console.log(`측정을 건너뜁니다: ${ready.why}`); process.exit(2); }
-    console.log(`kiro-cli ${ready.version}`);
+    console.log(`kiro-cli ${ready.version} (인증: ${ready.auth})`);
     provider = createKiroProvider();
   }
   console.log(`공급자: ${provider.label}, 주제 ${SAMPLES.length}개 x ${opt.runs}회, 검색 ${opt.search ? '포함' : '제외'}`);
@@ -97,4 +102,8 @@ async function main() {
   process.exit(ok.length === rows.length ? 0 : 1);
 }
 
-main().catch((e) => { console.error(e && e.message ? e.message : e); process.exit(1); });
+if (require.main === module) {
+  main().catch((e) => { console.error(e && e.message ? e.message : e); process.exit(1); });
+}
+
+module.exports = { kiroReady, quantile };
