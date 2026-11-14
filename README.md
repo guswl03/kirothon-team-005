@@ -109,7 +109,7 @@ npm run dist      # Windows 휴대용 실행 파일 빌드
 
 2026-11-14 기준 이 저장소로 옮긴 코드에서 `npm test` 166개와 `npm run check`가 통과했습니다. 실제 Electron 창과 외부 AI 연결은 이번 확인에 포함하지 않았습니다.
 
-기존 검증 결과와 확인하지 못한 항목은 [BUILD_REPORT.md](BUILD_REPORT.md)에 정리되어 있습니다. 제품 명세와 Kiro 활용 내역은 [`.kiro/specs/`](.kiro/specs/), [Kiro 활용 기록](docs/KIRO_USAGE.md), [보안 검토](docs/SECURITY_REVIEW.md)를 참고하세요. 원본 README의 전체 내용은 [README_SOURCE.md](README_SOURCE.md)에 보존했습니다.
+기존 검증 결과와 확인하지 못한 항목은 [BUILD_REPORT.md](BUILD_REPORT.md)에 정리되어 있습니다. 제품 명세와 Kiro 활용 내역은 [`.kiro/specs/`](.kiro/specs/), [Kiro 활용 기록](docs/KIRO_USAGE.md), [보안 검토](docs/SECURITY_REVIEW.md)를 참고하세요. 원본 README의 전체 내용은 [README_SOURCE.md](README_SOURCE.md)에 보존했고, 원본 Pull Request의 제목과 설명 등은 [별도 기록](docs/ORIGINAL_PULL_REQUESTS.md)으로 남겼습니다.
 
 ---
 
