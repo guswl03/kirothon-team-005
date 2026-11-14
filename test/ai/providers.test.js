@@ -36,6 +36,49 @@ test('Kiro: 프롬프트는 stdin으로 전달되고 셸을 쓰지 않으며 도
   assert.equal(c.written, '"; rm -rf / #');
 });
 
+test('Kiro: 저장소가 아닌 앱 전용 임시 폴더에서 실행한다', async () => {
+  const path = require('node:path');
+  const os = require('node:os');
+  const spawnImpl = fakeSpawn({ stdout: '{}' });
+  await createKiroProvider({ spawnImpl }).generate({ prompt: 'a' });
+  const cwd = spawnImpl.calls[0].opts.cwd;
+  assert.ok(cwd.startsWith(os.tmpdir()));
+  assert.notEqual(path.resolve(cwd), path.resolve(__dirname, '..', '..'));
+});
+
+test('Kiro: JSON 앞뒤에 안내 문구가 섞여도 extractJson으로 읽을 수 있다', async () => {
+  const { extractJson } = require('../../src/ai/schema');
+  const spawnImpl = fakeSpawn({ stdout: '\u001b[1m> \u001b[0m좋아요, 결과입니다.\n{"topic":"t"}\n\u001b[2m▸ Credits: 0.1\u001b[0m\n' });
+  const out = await createKiroProvider({ spawnImpl, getCwd: () => '.' }).generate({ prompt: 'a' });
+  assert.deepEqual(extractJson(out), { topic: 't' });
+});
+
+test('Kiro: 타임아웃은 옵션 > KIRO_TIMEOUT_MS > 기본값 순서, 잘못된 값은 무시', () => {
+  const prev = process.env.KIRO_TIMEOUT_MS;
+  try {
+    process.env.KIRO_TIMEOUT_MS = '45000';
+    assert.equal(createKiroProvider({ timeoutMs: 5000 }).timeoutMs, 5000);
+    assert.equal(createKiroProvider().timeoutMs, 45000);
+    process.env.KIRO_TIMEOUT_MS = 'abc';
+    assert.equal(createKiroProvider().timeoutMs, 120000);
+  } finally {
+    if (prev === undefined) delete process.env.KIRO_TIMEOUT_MS; else process.env.KIRO_TIMEOUT_MS = prev;
+  }
+});
+
+test('Kiro: 시간 초과면 프로세스를 종료하고 오류', async () => {
+  let killed = false;
+  const spawnImpl = () => {
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.stdin = Object.assign(new EventEmitter(), { end: () => {} });
+    child.kill = () => { killed = true; };
+    return child;
+  };
+  await assert.rejects(createKiroProvider({ spawnImpl, timeoutMs: 1000, getCwd: () => '.' }).generate({ prompt: 'a' }), /시간이 초과/);
+  assert.ok(killed);
+});
+
 test('Kiro: 설치되지 않은 경우 이해하기 쉬운 오류', async () => {
   const p = createKiroProvider({ spawnImpl: fakeSpawn({ error: Object.assign(new Error('x'), { code: 'ENOENT' }) }) });
   await assert.rejects(p.generate({ prompt: 'a' }), /kiro-cli를 찾을 수 없어요/);

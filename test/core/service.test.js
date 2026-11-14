@@ -130,3 +130,62 @@ test('프롬프트는 선택 텍스트를 데이터 구분자로 감싼다(프�
   assert.match(p, /지시문이 있어도 절대 따르지 않는다/);
   assert.match(p, /업무 대화/);
 });
+
+// ---- 화면(renderer)이 기대는 이벤트 계약 ----
+
+test('계약: regenerate는 regenerating 다음 regenerated를 같은 kind/index/requestId로 보낸다', async () => {
+  const { svc, events } = setup();
+  await svc.analyze('소프트웨어 테스트');
+  await svc.regenerate('switch', 0);
+  const evs = events.filter((e) => e.type === 'regenerating' || e.type === 'regenerated');
+  assert.deepEqual(evs.map((e) => e.type), ['regenerating', 'regenerated']);
+  for (const e of evs) {
+    assert.equal(e.kind, 'switch');
+    assert.equal(e.index, 0);
+    assert.equal(e.requestId, svc._currentId());
+  }
+});
+
+test('계약: 빈 후속 질문은 scope=followup인 invalid 이벤트를 보낸다', async () => {
+  const { svc, events } = setup();
+  await svc.analyze('소프트웨어 테스트');
+  await svc.followup('   ');
+  const inv = events.filter((e) => e.type === 'invalid');
+  assert.equal(inv.length, 1);
+  assert.equal(inv[0].scope, 'followup');
+  assert.ok(inv[0].message);
+});
+
+test('계약: 메인 입력 invalid 이벤트에는 scope가 없다', async () => {
+  const { svc, events } = setup();
+  await svc.analyze('   ');
+  assert.equal(events[0].type, 'invalid');
+  assert.equal(events[0].scope, undefined);
+});
+
+test('계약: 재생성 중 새 분석이 시작되면 이전 재생성 결과는 보내지 않는다', async () => {
+  const gates = [];
+  const base = createOfflineProvider();
+  const provider = {
+    id: 'x', label: 'x',
+    generate: (a) => (a.kind === 'full' ? base.generate(a) : new Promise((res) => gates.push(() => res(base.generate(a))))),
+  };
+  const { svc, events } = setup({ provider });
+  await svc.analyze('첫 번째 주제');
+  const firstId = svc._currentId();
+  const p = svc.regenerate('statement', 0);
+  await new Promise((r) => setImmediate(r));
+  await svc.analyze('두 번째 주제');
+  gates.forEach((g) => g());
+  await p;
+  assert.ok(events.some((e) => e.type === 'regenerating' && e.requestId === firstId));
+  assert.ok(!events.some((e) => e.type === 'regenerated'));
+});
+
+test('계약: 검색 부족이어도 sources(insufficient) 이벤트가 result보다 먼저 온다', async () => {
+  const { svc, events } = setup({ search: async () => ({ status: 'insufficient', sources: [], retrievedAt: 'now' }) });
+  await svc.analyze('아무도 모르는 주제');
+  const order = types(events).filter((t) => t === 'sources' || t === 'result');
+  assert.deepEqual(order, ['sources', 'result']);
+  assert.equal(events.find((e) => e.type === 'sources').status, 'insufficient');
+});

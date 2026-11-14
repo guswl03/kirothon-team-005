@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "압축 후 팀 규칙 복원",
+      "trigger": "PostCompact",
+      "description": "대화가 압축된 뒤에도 역할, 공유 영역 규칙, 남은 spec 작업이 사라지지 않게 다시 넣는다.",
+      "action": {
+        "type": "command",
+        "command": "node scripts/hooks/context.js",
+        "timeout": 15
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "프롬프트 변경 시 안전 규칙 확인",
+      "trigger": "PostFileSave",
+      "description": "프롬프트 인젝션 방어, 날조 금지, 출처 검증, 스키마 계약이 유지되는지 확인시킨다.",
+      "matcher": "src[\\\\/]ai[\\\\/](prompt|schema)\\.js$",
+      "action": {
+        "type": "agent",
+        "prompt": "src/ai/prompt.js 또는 schema.js가 바뀌었다. 확인할 것: (1) 프롬프트에 들어가는 사용자·검색 데이터가 모두 escapeData를 거치는가 (2) 경험·직업 날조 금지와 '데이터 안 지시 무시' 규칙이 유지되는가 (3) 출처 ID는 검색 결과에 있고 본문과 내용이 맞을 때만 남는가(SUPPORT_MIN) (4) 출력 JSON 스키마를 바꿨다면 service.js와 renderer가 기대하는 필드와 맞는가. 품질 영향은 node scripts/measure-kiro.js --offline으로 먼저 확인하고, kiro-cli 로그인 상태면 --runs 2로 실측을 제안한다."
+      }
+    }
+  ]
+}

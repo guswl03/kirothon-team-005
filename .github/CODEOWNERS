@@ -12,6 +12,7 @@
 
 # C: UI·문서·발표
 /src/renderer/    @C
+/test/renderer/   @C
 /README.md        @C
 /BUILD_REPORT.md  @C
 /PRESENTATION.pdf @C
