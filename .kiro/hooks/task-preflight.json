@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "spec 작업 시작 전 요구사항 확인",
+      "trigger": "PreTaskExec",
+      "description": "작업의 요구사항 번호, 파일 소유권, 검증 테스트를 먼저 확인하게 한다.",
+      "action": {
+        "type": "agent",
+        "prompt": "이 spec 작업을 시작하기 전에: (1) 작업의 _Requirements_ 번호를 같은 spec의 requirements.md에서 찾아 인수 기준을 확인한다. (2) 바꿀 파일이 현재 브랜치 역할의 소유 디렉터리인지 docs/TEAM_WORKFLOW.md로 확인하고, 공유 영역(src/core/service.js 이벤트 형식 등)이면 먼저 사용자에게 알린다. (3) 각 인수 기준을 검증할 테스트를 정하고 나서 구현한다."
+      }
+    }
+  ]
+}

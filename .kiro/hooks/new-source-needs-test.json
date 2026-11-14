@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "새 소스 파일에 테스트 짝 맞추기",
+      "trigger": "PostFileCreate",
+      "description": "새 모듈이 테스트 없이 들어오지 않게 한다.",
+      "matcher": "src[\\\\/].*\\.js$",
+      "action": {
+        "type": "agent",
+        "prompt": "src/ 아래에 새 JS 파일이 생겼다. 같은 영역의 test/ 디렉터리(src/ai -> test/ai, src/core -> test/core, src/main -> test/desktop)에 이 모듈의 동작을 검증하는 *.test.js가 있는지 확인하고, 없으면 node:test로 핵심 동작과 실패 경로를 검증하는 테스트를 추가한다. Electron에 의존하는 코드는 순수 함수로 분리해 테스트한다."
+      }
+    }
+  ]
+}

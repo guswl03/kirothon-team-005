@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "소스 저장 시 보안 정적 점검",
+      "trigger": "PostFileSave",
+      "description": "scripts/check.js로 innerHTML, eval, shell:true, exec, console.log, 하드코딩 비밀값, CSP, BrowserWindow 보안 옵션을 점검한다.",
+      "matcher": "src[\\\\/].*\\.(js|html|ps1)$",
+      "action": {
+        "type": "command",
+        "command": "node scripts/hooks/security-check.js",
+        "timeout": 60
+      }
+    }
+  ]
+}
