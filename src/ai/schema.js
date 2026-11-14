@@ -74,7 +74,24 @@ function normalizeSwitches(list, validIds) {
   })).filter((s) => s.topic && s.line);
 }
 
-/** @returns {{statements,questions,topicSwitches,keyFacts,topic,shortfalls:string[]}} */
+const MAX_TERMS = 5;
+
+/** 유행어·밈·고유명사 뜻풀이. 출처가 뒷받침하지 않으면 출처 연결을 끊고, 확신도는 명시적 high만 인정한다. */
+function normalizeTerms(list, validIds) {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  return list.map((t) => t || {}).map((t) => {
+    const meaning = str(t.meaning, 300);
+    const origin = str(t.origin, 200);
+    return {
+      term: str(t.term, 40), meaning, origin, inThisText: str(t.inThisText, 200),
+      confidence: t.confidence === 'high' ? 'high' : 'low',
+      sourceIds: sourceRefs(t.sourceIds, validIds, `${meaning} ${origin}`),
+    };
+  }).filter((t) => t.term && t.meaning && !seen.has(t.term) && seen.add(t.term)).slice(0, MAX_TERMS);
+}
+
+/** @returns {{terms,statements,questions,topicSwitches,keyFacts,topic,context:string,shortfalls:string[]}} */
 function normalizeResult(raw, sources = []) {
   const validIds = sourceIndex(sources);
   const r = raw && typeof raw === 'object' ? raw : {};
@@ -91,7 +108,7 @@ function normalizeResult(raw, sources = []) {
   if (questions.length < TARGETS.questions) shortfalls.push(`예상 질문 ${questions.length}/${TARGETS.questions}개`);
   if (questions.some((q) => q.answers.length < TARGETS.answersPerQuestion)) shortfalls.push('일부 질문의 답변이 2개 미만');
   if (topicSwitches.length < TARGETS.topicSwitches) shortfalls.push(`화제 전환 ${topicSwitches.length}/${TARGETS.topicSwitches}개`);
-  return { topic: str(r.topic, 120), statements, questions, topicSwitches, keyFacts, shortfalls };
+  return { topic: str(r.topic, 120), context: str(r.context, 200), terms: normalizeTerms(r.terms, validIds), statements, questions, topicSwitches, keyFacts, shortfalls };
 }
 
 function normalizeAnswers(raw, sources = []) {
@@ -125,4 +142,4 @@ function extractJson(text) {
   throw new Error('JSON이 완성되지 않았어요');
 }
 
-module.exports = { TARGETS, SUPPORT_MIN, supportScore, normalizeResult, normalizeAnswers, extractJson };
+module.exports = { TARGETS, SUPPORT_MIN, MAX_TERMS, supportScore, normalizeResult, normalizeAnswers, extractJson };

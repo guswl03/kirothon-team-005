@@ -38,7 +38,8 @@ test('MCP: initialize, tools/list, 알림 무시, 알 수 없는 메서드 오�
   assert.equal(res.get(1).result.serverInfo.name, 'cheatsheet-dev');
   assert.ok(res.get(1).result.capabilities.tools);
   const names = res.get(2).result.tools.map((t) => t.name);
-  for (const n of ['wiki_search', 'build_prompt', 'verify_result', 'support_score', 'offline_preview', 'project_status']) assert.ok(names.includes(n), n);
+  for (const n of ['wiki_search', 'build_prompt', 'verify_result', 'support_score', 'project_status']) assert.ok(names.includes(n), n);
+  assert.ok(!names.includes('offline_preview'), '오프라인 간이 모드는 제거됐다');
   assert.equal(res.get(3).error.code, -32601);
 });
 

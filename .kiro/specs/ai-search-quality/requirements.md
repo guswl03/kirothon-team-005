@@ -60,7 +60,7 @@ B 역할(AI·검색)의 품질 개선 범위다. 제품 요구사항은 `.kiro/s
 2. IF 문장의 출처 ID가 모두 제거되면, THEN THE Normalizer SHALL 그 문장을 `general`로 표시한다.
 3. IF 핵심 정보의 출처 ID가 모두 제거되면, THEN THE Normalizer SHALL 그 핵심 정보를 노출하지 않는다.
 4. THE Normalizer SHALL 활용 문장, 예상 질문 답변, 화제 전환, 핵심 정보, 후속 답변에 같은 검증을 적용한다.
-5. THE Normalizer SHALL 오프라인 간이 모드가 출처 문장을 인용해 만든 문장을 강등하지 않는다.
+5. THE Normalizer SHALL 출처 문장을 그대로 인용한 문장을 강등하지 않는다.
 6. WHERE 출처에 본문이 없으면, THE Normalizer SHALL ID 검증만 적용한다.
 
 ### Requirement 5: Kiro CLI 실측
@@ -72,7 +72,7 @@ B 역할(AI·검색)의 품질 개선 범위다. 제품 요구사항은 `.kiro/s
 1. THE Measure_Script SHALL 고정된 예시 주제로 전체 생성 프롬프트를 지정한 횟수만큼 실행하고, 응답 시간, JSON 파싱 성공률, 목표 개수 충족률, 평균 개수를 출력한다.
 2. THE Measure_Script SHALL 생성된 문장과 검색 본문을 출력하거나 저장하지 않는다.
 3. IF kiro-cli를 실행할 수 없거나 인증 정보가 없으면, THEN THE Measure_Script SHALL 이유를 안내하고 종료 코드 2로 끝낸다.
-4. WHERE `--offline`이 주어지면, THE Measure_Script SHALL 오프라인 간이 모드로 같은 측정을 실행한다.
+4. (삭제) 오프라인 간이 모드는 제품에서 제거했다. 측정은 Kiro CLI로만 한다.
 5. WHEN kiro-cli 로그인 세션이 있으면, THE Measure_Script SHALL `KIRO_API_KEY` 없이도 측정한다.
 
 ### Requirement 6: 실측 기반 프롬프트 튜닝
@@ -97,3 +97,17 @@ B 역할(AI·검색)의 품질 개선 범위다. 제품 요구사항은 `.kiro/s
 4. WHEN 소스 파일이 저장되면, THE Hook SHALL 그 영역의 테스트와 보안 정적 점검을 실행한다.
 5. WHEN 세션이 시작되거나 대화가 압축되면, THE Hook SHALL 브랜치 역할, 공유 영역 규칙, 남은 spec 작업을 컨텍스트에 넣는다.
 6. THE MCP 서버 SHALL 앱의 실제 모듈로 검색, 프롬프트 생성, 출처 검증, 상태 확인 도구를 제공한다.
+
+### Requirement 8: Kiro 연결 표시와 대화 맥락 반영
+
+**User Story:** As a 일상 대화 중인 사용자, I want Kiro가 연결됐는지와 결과를 무엇이 만들었는지 알고, 결과가 지금 대화 맥락에 맞기를, so that 어색한 문장 없이 바로 대화에 끼어들 수 있다.
+
+#### Acceptance Criteria
+
+1. WHEN 앱이 시작되거나 사용자가 '다시 확인'을 누르면, THE App SHALL `kiro-cli whoami`로 Kiro 연결 상태(연결됨, 미설치, 로그인 필요, 확인 실패)를 확인해 창에 표시한다. 계정 정보는 표시하거나 저장하지 않는다.
+2. WHEN 공급자가 자동 선택이면, THE App SHALL 로그인 세션이나 `KIRO_API_KEY`가 있으면 Kiro를 쓴다.
+3. IF Kiro가 미설치이거나 로그인되지 않았으면, THEN THE App SHALL 생성하지 않고 연결 방법을 오류로 안내한다. 대체 문장을 만들지 않는다.
+4. THE App SHALL 결과마다 실제로 호출한 공급자를 표시한다.
+5. THE Prompt_Builder SHALL 선택 텍스트가 나온 대화 상황과 의도를 먼저 파악하게 하고(context), 상대의 말을 사용자의 말처럼 되풀이하지 않으며, 맥락과 무관하거나 분위기에 맞지 않는 출처를 쓰지 않게 한다.
+6. THE Prompt_Builder SHALL 일상 대화(친구·지인과의 메신저, 모임)를 기본 상황으로 둔다.
+7. WHEN 후속 질문에 답할 때, THE Prompt_Builder SHALL 파악한 맥락을 함께 넣는다.

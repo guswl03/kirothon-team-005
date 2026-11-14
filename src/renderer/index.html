@@ -46,6 +46,13 @@
     <div id="notice" class="banner" hidden></div>
 
     <div id="results" hidden>
+      <p id="genBy" class="genBy"></p>
+      <section id="meaning" class="meaning" aria-labelledby="meaningTitle">
+        <h2 id="meaningTitle">이 말 무슨 뜻이에요?</h2>
+        <p id="contextLine" class="contextLine"></p>
+        <ul id="terms" class="terms"></ul>
+      </section>
+
       <section class="hero" aria-labelledby="heroTitle">
         <h2 id="heroTitle">지금 바로 쓸 문장</h2>
         <p id="heroText" class="heroText"></p>
@@ -91,6 +98,8 @@
   <footer>
     <label for="provider">AI</label>
     <select id="provider"></select>
+    <span id="kiroStatus" class="conn" role="status" aria-live="polite"></span>
+    <button id="kiroCheck" class="linkbtn" title="Kiro CLI 연결을 다시 확인해요">다시 확인</button>
     <span id="providerNote" class="hint"></span>
   </footer>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

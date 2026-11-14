@@ -23,7 +23,7 @@ B 역할(AI·검색) 품질 개선 작업 목록이다. 브랜치는 `feat/ai`. 
   - 커밋 `1cb7db1`, 테스트 `test/ai/schema.test.js`
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 - [x] 5. Kiro CLI 실측 스크립트
-  - [x] 5.1 측정·요약·`--offline` 모드 (커밋 `b15c480`)
+  - [x] 5.1 측정·요약 (커밋 `b15c480`. `--offline`은 Task 8에서 제거)
     - _Requirements: 5.1, 5.2, 5.4_
   - [x] 5.2 kiro-cli 로그인 세션 인정(`kiro-cli whoami`)과 미준비 시 종료 코드 2
     - _Requirements: 5.3, 5.5_
@@ -65,6 +65,21 @@ B 역할(AI·검색) 품질 개선 작업 목록이다. 브랜치는 `feat/ai`. 
     - _Requirements: 7.6_
   - [x] 7.4 steering, custom agents, skills, workflows 정리
     - _Requirements: 7.5_
+
+- [ ] 8. Kiro 연결 표시, 오프라인 간이 모드 제거, 대화 맥락 반영
+  - [x] 8.1 `checkKiro`(whoami)와 `resolveKiroCommand`(PATH 미갱신 시 기본 설치 위치), 자동 선택 시 Kiro 우선
+    - 테스트 `test/ai/providers.test.js`
+    - _Requirements: 8.1, 8.2, 8.3_
+  - [x] 8.2 오프라인 간이 모드 제거(앱, `measure-kiro.js --offline`, MCP `offline_preview`). 테스트용 가짜 공급자는 `test/fixtures/fakeProvider.js`
+    - _Requirements: 8.3_
+  - [x] 8.3 창 하단 Kiro 연결 상태와 '다시 확인', 결과마다 실제 공급자 표시
+    - 테스트 `test/core/service.test.js`
+    - _Requirements: 8.1, 8.4_
+  - [x] 8.4 프롬프트 맥락 파악 지침, `context` 필드, 일상 대화 기본, 후속 질문에 맥락 전달
+    - 테스트 `test/ai/prompt.test.js`, `test/ai/schema.test.js`
+    - _Requirements: 8.5, 8.6, 8.7_
+  - [ ] 8.5 실제 Kiro로 일상 대화 입력 재측정(`node scripts/measure-kiro.js --runs 1`)과 문장 직접 확인
+    - _Requirements: 5.1, 8.5_
 
 ## Task Dependency Graph
 

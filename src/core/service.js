@@ -24,24 +24,26 @@ function createService({ getProvider, search = searchTopic, emit = () => {} }) {
     return { id: seq, signal: ctrl.signal };
   }
 
-  async function callModel(ctx, promptText, extra, signal) {
-    const provider = getProvider();
+  async function callModel(ctx, promptText, extra, signal, provider = getProvider()) {
     const raw = await provider.generate({ prompt: promptText, signal, ctx, ...extra });
     return extractJson(raw);
   }
 
   async function generateFull(id, signal) {
-    send(id, { type: 'stage', stage: 'generating' });
+    const provider = getProvider();   // 결과에 표시할 공급자는 실제로 호출한 공급자와 같아야 한다
+    send(id, { type: 'stage', stage: 'generating', providerId: provider.id, provider: provider.label });
     try {
-      const json = await callModel(session, prompt.buildFullPrompt(session), { kind: 'full' }, signal);
+      const json = await callModel(session, prompt.buildFullPrompt(session), { kind: 'full' }, signal, provider);
       const result = normalizeResult(json, session.sources);
       session.result = result;
       session.topicHint = result.topic || session.topicHint;
+      const hint = [result.context, ...(result.terms || []).map((t) => `${t.term}: ${t.inThisText || t.meaning}`)].filter(Boolean).join(' / ');
+      session.contextHint = hint.slice(0, 400) || session.contextHint;
       if (!result.statements.length && !result.questions.length && !result.topicSwitches.length) {
         send(id, { type: 'error', stage: 'generating', message: '생성된 내용이 없어요. 다시 시도해 주세요.', retryable: true });
         return;
       }
-      send(id, { type: 'result', result, provider: getProvider().label });
+      send(id, { type: 'result', result, provider: provider.label, providerId: provider.id });
       send(id, { type: 'stage', stage: 'done' });
     } catch (e) {
       if (e && e.name === 'AbortError') return;
@@ -53,7 +55,7 @@ function createService({ getProvider, search = searchTopic, emit = () => {} }) {
     const v = validateInput(rawText);
     if (!v.ok) { emit({ requestId: seq, type: 'invalid', ...v }); return { ok: false, ...v }; }
     const { id, signal } = begin();
-    session = { text: v.text, tone: prompt.toneOf(tone), note: String(note).slice(0, 300), direction: String(direction).slice(0, 80), sources: [], searchStatus: 'pending', result: null, topicHint: '' };
+    session = { text: v.text, tone: prompt.toneOf(tone), note: String(note).slice(0, 300), direction: String(direction).slice(0, 80), sources: [], searchStatus: 'pending', result: null, topicHint: '', contextHint: '' };
     send(id, { type: 'start', text: v.text, tone: session.tone });
     send(id, { type: 'stage', stage: 'searching' });
     let found;
@@ -137,7 +139,7 @@ function createService({ getProvider, search = searchTopic, emit = () => {} }) {
     const signal = auxCtrl.signal;
     send(id, { type: 'followup-start', question: q.text });
     try {
-      const json = await callModel(session, prompt.buildFollowupPrompt(session, q.text, session.topicHint), { kind: 'followup', question: q.text }, signal);
+      const json = await callModel(session, prompt.buildFollowupPrompt(session, q.text, session.topicHint, session.contextHint), { kind: 'followup', question: q.text }, signal);
       const out = normalizeAnswers(json, session.sources);
       send(id, { type: 'followup-result', question: q.text, ...out });
       return { ok: true };

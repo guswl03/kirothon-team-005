@@ -19,7 +19,6 @@ flowchart LR
   SVC --> PROV{Provider}
   PROV --> KIRO[kiro-cli stdin]
   PROV --> OAI[OpenAI 호환 https]
-  PROV --> OFF[offline 간이]
   SVC --> SCHEMA[schema 정규화·출처 검증]
   MAIN -- IPC 이벤트 --> UI[renderer 결과 창]
   UI -- IPC 요청 --> MAIN

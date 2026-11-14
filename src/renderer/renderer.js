@@ -45,6 +45,17 @@ function render() {
   const r = state.result;
   $('results').hidden = !r;
   if (!r) return;
+  const terms = r.terms || [];
+  $('meaning').hidden = !r.context && !terms.length;
+  $('contextLine').hidden = !r.context;
+  $('contextLine').textContent = r.context ? `쉽게 말하면: ${r.context}` : '';
+  $('terms').replaceChildren(...terms.map((t) => h('li', {},
+    h('div', { class: 'termHead' }, h('strong', {}, t.term),
+      t.sourceIds.length ? srcBadges(t.sourceIds)
+        : h('span', { class: t.confidence === 'high' ? 'badge gen' : 'badge est' }, t.confidence === 'high' ? 'AI 설명 · 출처 없음' : 'AI 추정 · 확실하지 않아요')),
+    h('p', { class: 'text' }, t.meaning),
+    t.origin ? h('p', { class: 'hint' }, `유래: ${t.origin}`) : null,
+    t.inThisText ? h('p', { class: 'inText' }, `이 문장에서는: ${t.inThisText}`) : null)));
   const first = r.statements[0];
   $('heroText').textContent = first ? first.text : '활용할 문장을 만들지 못했어요.';
   $('heroMeta').replaceChildren(...(first ? [].concat(srcBadges(first.sourceIds)) : []));
@@ -95,11 +106,13 @@ function onEvent(ev) {
   switch (ev.type) {
     case 'stage':
       if (ev.stage === 'searching') setStatus('관련 정보를 검색하는 중…');
-      else if (ev.stage === 'generating') setStatus('문장을 만드는 중…');
+      else if (ev.stage === 'generating') setStatus(ev.provider ? `${ev.provider}로 문장을 만드는 중…` : '문장을 만드는 중…');
       else { setStatus(''); setBusy(false); }
       break;
     case 'sources': renderSources(ev); break;
-    case 'result': state.result = ev.result; $('providerNote').textContent = `생성: ${ev.provider}`; setStatus(''); render(); setBusy(false); break;
+    case 'result':
+      state.result = ev.result; $('providerNote').textContent = `생성: ${ev.provider}`;
+      showGeneratedBy(ev.providerId, ev.provider); setStatus(''); render(); setBusy(false); break;
     case 'error': setStatus(''); setBusy(false); setError(ev.message); break;
     case 'regenerated':
       if (ev.item) {
@@ -119,6 +132,30 @@ function onEvent(ev) {
   }
 }
 
+/** 결과 위에 실제로 어떤 AI가 만들었는지 표시한다. */
+function showGeneratedBy(id, label) {
+  const el = $('genBy');
+  el.textContent = id === 'kiro' ? 'Kiro가 만든 결과예요.' : `${label || 'AI'}가 만든 결과예요.`;
+  el.className = id === 'kiro' ? 'genBy' : 'genBy other';
+}
+
+const KIRO_TEXT = {
+  checking: ['Kiro 확인 중…', 'wait'],
+  connected: ['Kiro 연결됨', 'ok'],
+  not_installed: ['Kiro 미설치', 'bad'],
+  not_logged_in: ['Kiro 로그인 필요', 'bad'],
+  error: ['Kiro 확인 실패', 'bad'],
+};
+
+function renderKiroStatus(k) {
+  const [label, cls] = KIRO_TEXT[(k && k.status) || 'checking'] || KIRO_TEXT.error;
+  const el = $('kiroStatus');
+  el.textContent = label;
+  el.className = `conn ${cls}`;
+  el.title = (k && k.message) || '';
+  $('kiroCheck').hidden = !k || k.status === 'checking';
+}
+
 function setBusy(b) { state.busy = b; $('analyze').disabled = b; }
 
 function applyAppState(s) {
@@ -128,10 +165,11 @@ function applyAppState(s) {
   $('autoLabel').textContent = !s.autoSupported ? '자동 분석: Windows 전용' : s.autoAnalyze ? '자동 분석 켜짐' : '자동 분석 꺼짐';
   const sel = $('provider');
   if (!sel.options.length) {
-    const names = { auto: '자동 선택', kiro: 'Kiro CLI', openai: 'OpenAI 호환', offline: '오프라인 간이' };
+    const names = { auto: '자동 선택(Kiro 우선)', kiro: 'Kiro CLI', openai: 'OpenAI 호환' };
     s.providers.forEach((p) => sel.append(h('option', { value: p }, names[p])));
   }
   sel.value = s.provider;
+  renderKiroStatus(s.kiro);
   if (!state.result) $('providerNote').textContent = `사용 중: ${s.activeProvider.label}${s.activeProvider.external ? '' : ' (외부 전송 없음)'}`;
 }
 
@@ -148,6 +186,7 @@ $('close').addEventListener('click', () => bridge.hide());
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') bridge.hide(); });
 $('auto').addEventListener('change', async (e) => { const on = await bridge.setAuto(e.target.checked); e.target.checked = Boolean(on); });
 $('provider').addEventListener('change', (e) => bridge.setProvider(e.target.value));
+$('kiroCheck').addEventListener('click', () => bridge.checkKiro());
 document.querySelectorAll('input[name=tone]').forEach((r) => r.addEventListener('change', () => { if (state.result) bridge.setTone(tone()); }));
 $('fuBtn').addEventListener('click', () => bridge.followup($('fuInput').value));
 $('fuInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') bridge.followup($('fuInput').value); });

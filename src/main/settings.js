@@ -4,7 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const DEFAULTS = { autoAnalyze: false, consentAccepted: false, tone: 'casual', provider: 'auto' };
-const PROVIDERS = ['auto', 'kiro', 'openai', 'offline'];
+// 예전 설정 파일의 'offline'은 sanitize에서 'auto'로 바뀐다.
+const PROVIDERS = ['auto', 'kiro', 'openai'];
 
 function sanitize(obj) {
   const o = obj && typeof obj === 'object' ? obj : {};

@@ -22,8 +22,56 @@ function isolatedCwd(mkdir = fs.mkdirSync) {
   return dir;
 }
 
+/**
+ * 실행할 kiro-cli 경로. KIRO_CLI_PATH > PATH의 kiro-cli 순서이고, Windows에서 설치 직후라
+ * PATH가 갱신되지 않았으면 기본 설치 위치(%LOCALAPPDATA%\Kiro-Cli\kiro-cli.exe)를 쓴다.
+ */
+function resolveKiroCommand({ env = process.env, exists = fs.existsSync, platform = process.platform } = {}) {
+  if (env.KIRO_CLI_PATH) return env.KIRO_CLI_PATH;
+  if (platform === 'win32' && env.LOCALAPPDATA) {
+    const local = path.join(env.LOCALAPPDATA, 'Kiro-Cli', 'kiro-cli.exe');
+    const onPath = String(env.PATH || env.Path || '').split(path.delimiter)
+      .some((d) => d && exists(path.join(d, 'kiro-cli.exe')));
+    if (!onPath && exists(local)) return local;
+  }
+  return 'kiro-cli';
+}
+
+/**
+ * Kiro CLI 연결 상태를 확인한다. `kiro-cli whoami`가 성공하면 로그인 세션, 아니면 KIRO_API_KEY 여부로 판단한다.
+ * @returns {Promise<{status:'connected'|'not_installed'|'not_logged_in'|'error', auth?:string, message:string}>}
+ */
+function checkKiro(opts = {}) {
+  const env = opts.env || process.env;
+  const cmd = opts.command || resolveKiroCommand({ env });
+  const spawnImpl = opts.spawnImpl || spawn;
+  const timeoutMs = opts.timeoutMs || 15000;
+  return new Promise((resolve) => {
+    let child;
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; clearTimeout(timer); resolve(v); };
+    const timer = setTimeout(() => { try { child && child.kill(); } catch { /* ignore */ } finish({ status: 'error', message: 'Kiro CLI 확인 시간이 초과됐어요.' }); }, timeoutMs);
+    try {
+      child = spawnImpl(cmd, ['whoami'], { shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) {
+      finish({ status: 'error', message: `Kiro CLI를 실행하지 못했어요. ${e.message}` });
+      return;
+    }
+    if (child.stdout) child.stdout.on('data', () => { /* 계정 정보는 화면·로그에 남기지 않는다 */ });
+    if (child.stderr) child.stderr.on('data', () => {});
+    child.on('error', (e) => finish(e && e.code === 'ENOENT'
+      ? { status: 'not_installed', message: 'Kiro CLI가 설치되어 있지 않아요.' }
+      : { status: 'error', message: `Kiro CLI를 실행하지 못했어요. ${(e && e.message) || ''}`.trim() }));
+    child.on('close', (code) => {
+      if (code === 0) finish({ status: 'connected', auth: 'login', message: 'Kiro CLI에 로그인되어 있어요.' });
+      else if (env.KIRO_API_KEY) finish({ status: 'connected', auth: 'api_key', message: 'KIRO_API_KEY로 연결해요.' });
+      else finish({ status: 'not_logged_in', message: '터미널에서 kiro-cli login으로 로그인해 주세요.' });
+    });
+  });
+}
+
 function createKiroProvider(opts = {}) {
-  const cmd = opts.command || process.env.KIRO_CLI_PATH || 'kiro-cli';
+  const cmd = opts.command || resolveKiroCommand();
   const timeoutMs = timeoutFrom(opts.timeoutMs) || timeoutFrom(process.env.KIRO_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS;
   const spawnImpl = opts.spawnImpl || spawn;
   const getCwd = opts.getCwd || (() => isolatedCwd());
@@ -60,4 +108,4 @@ function createKiroProvider(opts = {}) {
   };
 }
 
-module.exports = { createKiroProvider, isolatedCwd };
+module.exports = { createKiroProvider, isolatedCwd, resolveKiroCommand, checkKiro };

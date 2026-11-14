@@ -2,14 +2,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createService } = require('../../src/core/service');
-const { createOfflineProvider } = require('../../src/ai/providers/offline');
+const { createFakeProvider } = require('../fixtures/fakeProvider');
 
 const src = [{ id: 'S1', name: '위키백과(ko) - 테스트', title: '테스트', url: 'https://ko.wikipedia.org/wiki/t', extract: '테스트는 어떤 것의 성능을 확인하는 과정이다. 소프트웨어 개발에서 매우 중요한 단계로 알려져 있다. 자동화된 테스트도 널리 쓰인다.', retrievedAt: 'now' }];
 const okSearch = async () => ({ status: 'ok', query: '테스트', sources: src, retrievedAt: 'now' });
 
 function setup(over = {}) {
   const events = [];
-  const provider = over.provider || createOfflineProvider();
+  const provider = over.provider || createFakeProvider();
   const svc = createService({ getProvider: () => provider, search: over.search || okSearch, emit: (e) => events.push(e) });
   return { svc, events };
 }
@@ -23,6 +23,22 @@ test('정상 흐름: 검색 -> 출처 -> 결과 순으로 이벤트가 발생한
   assert.ok(r.statements.length >= 5);
   assert.ok(r.questions.length >= 5 && r.questions.every((q) => q.answers.length >= 2 && q.estimated));
   assert.ok(r.topicSwitches.length >= 3);
+});
+
+test('결과에는 실제로 호출한 공급자를 표시한다(생성 중 공급자가 바뀌어도)', async () => {
+  const events = [];
+  const fake = createFakeProvider();
+  const used = { id: 'kiro', label: 'Kiro CLI', generate: async (a) => { current = other; return fake.generate(a); } };
+  const other = { id: 'openai', label: 'OpenAI 호환', generate: fake.generate };
+  let current = used;
+  const svc = createService({ getProvider: () => current, search: okSearch, emit: (e) => events.push(e) });
+  await svc.analyze('소프트웨어 테스트');
+  const gen = events.find((e) => e.type === 'stage' && e.stage === 'generating');
+  assert.equal(gen.providerId, 'kiro');
+  const r = events.find((e) => e.type === 'result');
+  assert.equal(r.providerId, 'kiro');
+  assert.equal(r.provider, 'Kiro CLI');
+  assert.equal(r.result.context, '테스트용 고정 맥락');
 });
 
 test('빈 입력은 처리하지 않고 invalid 이벤트만 발생', async () => {
@@ -46,7 +62,7 @@ test('검색 실패 시에도 실패 상태를 알리고, 출처 없는 문장�
 
 test('생성 실패 시 retryable 오류를 알리고 retry로 복구된다', async () => {
   let fail = true;
-  const base = createOfflineProvider();
+  const base = createFakeProvider();
   const provider = { id: 'x', label: 'x', generate: async (a) => { if (fail) throw new Error('boom'); return base.generate(a); } };
   const { svc, events } = setup({ provider });
   await svc.analyze('소프트웨어 테스트');
@@ -67,7 +83,7 @@ test('모델이 JSON이 아닌 응답을 주면 오류로 처리한다', async (
 
 test('요청 처리 중 새 선택이 오면 이전 요청의 결과는 표시되지 않는다', async () => {
   const gates = [];
-  const base = createOfflineProvider();
+  const base = createFakeProvider();
   const provider = { id: 'x', label: 'x', generate: (a) => new Promise((res) => gates.push(() => res(base.generate(a)))) };
   const { svc, events } = setup({ provider });
   const p1 = svc.analyze('첫 번째 주제');
