@@ -1,0 +1,23 @@
+# 역할별 소유 디렉터리. 소유자 외 변경은 PR에서 소유자 리뷰를 받는다.
+# 아래 @A, @B, @C를 실제 GitHub 아이디로 바꾸세요.
+
+# A: 데스크톱 통합·감지
+/src/main/        @A
+/src/native/      @A
+/test/desktop/    @A
+
+# B: AI·검색 품질
+/src/ai/          @B
+/test/ai/         @B
+
+# C: UI·문서·발표
+/src/renderer/    @C
+/README.md        @C
+/BUILD_REPORT.md  @C
+/PRESENTATION.pdf @C
+/docs/presentation.html @C
+/docs/assets/     @C
+
+# 공유 계약(변경 시 B와 C가 먼저 합의)
+/src/core/        @B @C
+/test/core/       @B @C

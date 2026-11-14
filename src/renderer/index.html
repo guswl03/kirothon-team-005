@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>대화 치트키</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <h1>대화 치트키</h1>
+    <label class="switch" title="드래그로 선택한 텍스트를 자동으로 분석해요">
+      <input type="checkbox" id="auto" role="switch" />
+      <span class="track" aria-hidden="true"></span>
+      <span id="autoLabel">자동 분석 꺼짐</span>
+    </label>
+    <button id="close" class="icon" aria-label="창 숨기기">✕</button>
+  </header>
+
+  <main>
+    <section class="input" aria-label="분석할 내용">
+      <label for="text">선택한 내용 <span class="hint">(자동 감지가 안 되면 복사해서 붙여넣으세요)</span></label>
+      <textarea id="text" rows="3" maxlength="1500" placeholder="예: 양자 컴퓨터"></textarea>
+      <div class="row">
+        <div class="seg" role="radiogroup" aria-label="말투">
+          <label><input type="radio" name="tone" value="casual" checked /><span>일상 대화</span></label>
+          <label><input type="radio" name="tone" value="work" /><span>업무 대화</span></label>
+        </div>
+        <button id="analyze" class="primary">분석하기</button>
+      </div>
+      <details>
+        <summary>맥락·방향 추가 (선택)</summary>
+        <label for="note">주제 맥락 (뜻이 여러 개일 때)</label>
+        <input id="note" type="text" maxlength="300" placeholder="예: 컴퓨터 분야" />
+        <label for="direction">화제 전환 선호 방향</label>
+        <input id="direction" type="text" maxlength="80" placeholder="예: 가벼운 취미 이야기" />
+      </details>
+    </section>
+
+    <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+    <div id="error" class="banner error" role="alert" hidden>
+      <span id="errorText"></span>
+      <button id="retry">다시 시도</button>
+    </div>
+    <div id="notice" class="banner" hidden></div>
+
+    <div id="results" hidden>
+      <section class="hero" aria-labelledby="heroTitle">
+        <h2 id="heroTitle">지금 바로 쓸 문장</h2>
+        <p id="heroText" class="heroText"></p>
+        <div id="heroMeta" class="meta"></div>
+        <button id="heroCopy" class="primary">복사</button>
+      </section>
+
+      <section aria-labelledby="stTitle">
+        <h2 id="stTitle">아는 척 문장</h2>
+        <ul id="statements" class="cards"></ul>
+      </section>
+
+      <section aria-labelledby="qTitle">
+        <h2 id="qTitle">예상 질문과 답변 <span class="badge est">AI 추정</span></h2>
+        <p class="hint">실제 상대가 한 말이 아니라 AI가 예상한 질문이에요.</p>
+        <div id="questions"></div>
+      </section>
+
+      <section aria-labelledby="swTitle">
+        <h2 id="swTitle">화제 전환</h2>
+        <ul id="switches" class="cards"></ul>
+      </section>
+
+      <section class="followup" aria-labelledby="fuTitle">
+        <h2 id="fuTitle">실제로 받은 질문에 답하기</h2>
+        <label for="fuInput" class="sr">상대가 한 질문</label>
+        <div class="row">
+          <input id="fuInput" type="text" maxlength="300" placeholder="상대가 물어본 말을 입력하세요" />
+          <button id="fuBtn">답변 만들기</button>
+        </div>
+        <div id="fuOut"></div>
+      </section>
+
+      <section aria-labelledby="srcTitle">
+        <h2 id="srcTitle">핵심 정보와 출처</h2>
+        <div id="srcStatus" class="hint"></div>
+        <ul id="facts" class="facts"></ul>
+        <ul id="sources" class="sources"></ul>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <label for="provider">AI</label>
+    <select id="provider"></select>
+    <span id="providerNote" class="hint"></span>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="renderer.js"></script>
+</body>
+</html>

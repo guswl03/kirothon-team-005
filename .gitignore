@@ -1,0 +1,31 @@
+# Secrets and machine-local files (product-specific ignores are added after PRD)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+**/.DS_Store
+Thumbs.db
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+node_modules/
+coverage/
+.coverage
+*.log
+# Kiro session data should not be committed
+.kiro/session-state/
+# Genuine generated app output can extend this file
+
+# build output
+dist/
+out/
