@@ -7,15 +7,49 @@ function str(v, max = 400) {
   return typeof v === 'string' ? v.trim().slice(0, max) : '';
 }
 
-function sourceRefs(v, validIds) {
+// 문장 글자 2-gram 중 출처 본문에도 있는 비율이 이 값 미만이면 그 출처와의 연결을 끊는다.
+// 한국어는 조사 때문에 단어 단위 비교가 잘 안 맞아서 글자 2-gram을 쓴다.
+const SUPPORT_MIN = 0.3;
+
+function bigrams(s) {
+  const t = String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+  const out = new Set();
+  for (let i = 0; i < t.length - 1; i++) out.add(t.slice(i, i + 2));
+  return out;
+}
+
+/** text의 2-gram 중 source 본문에 있는 비율(0~1). */
+function supportScore(text, extract) {
+  const a = bigrams(text);
+  if (!a.size) return 0;
+  const b = extract instanceof Set ? extract : bigrams(extract);
+  let hit = 0;
+  for (const g of a) if (b.has(g)) hit++;
+  return hit / a.size;
+}
+
+/** 출처 ID 목록과 본문 2-gram 색인. 본문이 없는 출처는 내용 검증을 건너뛴다(ID 검증만). */
+function sourceIndex(sources) {
+  const ids = new Set();
+  const grams = new Map();
+  for (const s of sources) {
+    if (!s || typeof s.id !== 'string') continue;
+    ids.add(s.id);
+    if (typeof s.extract === 'string' && s.extract.trim()) grams.set(s.id, bigrams(`${s.title || ''} ${s.extract}`));
+  }
+  return { has: (id) => ids.has(id), grams };
+}
+
+function sourceRefs(v, index, text) {
   if (!Array.isArray(v)) return [];
-  return [...new Set(v.filter((x) => typeof x === 'string' && validIds.has(x)))];
+  return [...new Set(v.filter((x) => typeof x === 'string' && index.has(x)))]
+    .filter((id) => !index.grams.has(id) || supportScore(text, index.grams.get(id)) >= SUPPORT_MIN);
 }
 
 function normalizeStatements(list, validIds) {
   if (!Array.isArray(list)) return [];
   return list.map((it) => (typeof it === 'string' ? { text: it } : it || {}))
-    .map((it) => ({ text: str(it.text), basis: it.basis === 'sourced' ? 'sourced' : 'general', sourceIds: sourceRefs(it.sourceIds, validIds) }))
+    .map((it) => ({ text: str(it.text), basis: it.basis === 'sourced' ? 'sourced' : 'general', sourceIds: sourceRefs(it.sourceIds, validIds, str(it.text)) }))
     .map((it) => ({ ...it, basis: it.basis === 'sourced' && it.sourceIds.length ? 'sourced' : 'general' }))
     .filter((it) => it.text);
 }
@@ -25,7 +59,7 @@ function normalizeQuestions(list, validIds) {
   return list.map((q) => {
     const answers = (Array.isArray(q && q.answers) ? q.answers : [])
       .map((a) => (typeof a === 'string' ? { text: a } : a || {}))
-      .map((a) => ({ text: str(a.text), sourceIds: sourceRefs(a.sourceIds, validIds) }))
+      .map((a) => ({ text: str(a.text), sourceIds: sourceRefs(a.sourceIds, validIds, str(a.text)) }))
       .filter((a) => a.text);
     return { question: str(q && q.question, 200), answers, estimated: true };
   }).filter((q) => q.question && q.answers.length);
@@ -36,20 +70,20 @@ function normalizeSwitches(list, validIds) {
   return list.map((s) => ({
     topic: str(s && s.topic, 80),
     line: str(s && s.line),
-    sourceIds: sourceRefs(s && s.sourceIds, validIds),
+    sourceIds: sourceRefs(s && s.sourceIds, validIds, str(s && s.line)),
   })).filter((s) => s.topic && s.line);
 }
 
 /** @returns {{statements,questions,topicSwitches,keyFacts,topic,shortfalls:string[]}} */
 function normalizeResult(raw, sources = []) {
-  const validIds = new Set(sources.map((s) => s.id));
+  const validIds = sourceIndex(sources);
   const r = raw && typeof raw === 'object' ? raw : {};
   const statements = normalizeStatements(r.statements, validIds);
   const questions = normalizeQuestions(r.questions, validIds);
   const topicSwitches = normalizeSwitches(r.topicSwitches, validIds);
   const keyFacts = (Array.isArray(r.keyFacts) ? r.keyFacts : [])
     .map((f) => (typeof f === 'string' ? { text: f } : f || {}))
-    .map((f) => ({ text: str(f.text), sourceIds: sourceRefs(f.sourceIds, validIds) }))
+    .map((f) => ({ text: str(f.text), sourceIds: sourceRefs(f.sourceIds, validIds, str(f.text)) }))
     // 출처가 연결되지 않은 '사실'은 핵심 정보로 노출하지 않는다.
     .filter((f) => f.text && f.sourceIds.length);
   const shortfalls = [];
@@ -61,11 +95,11 @@ function normalizeResult(raw, sources = []) {
 }
 
 function normalizeAnswers(raw, sources = []) {
-  const validIds = new Set(sources.map((s) => s.id));
+  const validIds = sourceIndex(sources);
   const r = raw && typeof raw === 'object' ? raw : {};
   const answers = (Array.isArray(r.answers) ? r.answers : [])
     .map((a) => (typeof a === 'string' ? { text: a } : a || {}))
-    .map((a) => ({ text: str(a.text), sourceIds: sourceRefs(a.sourceIds, validIds) }))
+    .map((a) => ({ text: str(a.text), sourceIds: sourceRefs(a.sourceIds, validIds, str(a.text)) }))
     .filter((a) => a.text);
   return { answers, insufficient: Boolean(r.insufficient) || answers.length === 0, note: str(r.note, 300) };
 }
@@ -91,4 +125,4 @@ function extractJson(text) {
   throw new Error('JSON이 완성되지 않았어요');
 }
 
-module.exports = { TARGETS, normalizeResult, normalizeAnswers, extractJson };
+module.exports = { TARGETS, SUPPORT_MIN, supportScore, normalizeResult, normalizeAnswers, extractJson };

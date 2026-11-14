@@ -1,0 +1,51 @@
+name: pre-merge-review
+description: >-
+  역할 브랜치를 main에 합치기 전 검토. 검증 명령 실행 후 보안, 테스트 충분성, 팀 소유권·계약 검토를
+  병렬로 돌리고 하나의 합치기 판단으로 정리한다. 파일을 고치지 않는다.
+inputs:
+  branch: string
+steps:
+  - type: step
+    id: run-checks
+    agent: wf-planner
+    prompt: >-
+      브랜치 {{branch}}에서 .kiro/skills/release-check/SKILL.md의 1~3단계를 따른다.
+      node --test "test/**/*.test.js", node scripts/check.js, node scripts/smoke.js 결과와
+      git diff --stat main...{{branch}}, 남은 spec 작업을 요약한다. 파일은 고치지 않는다.
+
+  - type: parallel
+    id: reviews
+    joinPolicy: allSettled
+    branches:
+      - type: step
+        id: security
+        agent: semantic_reviewer
+        prompt: >-
+          main...{{branch}} 변경을 .kiro/steering/security.md 규칙 1~7과 docs/SECURITY_REVIEW.md 기준으로 검토한다.
+      - type: step
+        id: tests
+        agent: semantic_reviewer
+        prompt: >-
+          main...{{branch}}에서 바뀐 동작마다 그 동작을 검증하는 테스트가 있는지 본다.
+          실패 경로(네트워크 오류, 취소, 잘못된 JSON, 빈 입력)와 공격 입력 테스트가 빠졌으면 구체적으로 적는다.
+      - type: step
+        id: ownership
+        agent: semantic_reviewer
+        prompt: >-
+          main...{{branch}} 변경이 docs/TEAM_WORKFLOW.md의 역할별 소유 디렉터리를 지키는지,
+          공유 영역(src/core/service.js 이벤트 형식, IPC 채널, package.json)을 바꿨다면 계약이 깨지지 않았는지 검토한다.
+
+  - type: step
+    id: verdict
+    agent: wf-review-aggregator
+    prompt: >-
+      검증 결과와 세 검토를 합쳐 "합쳐도 됨 / 고친 뒤 합침 / 합치지 말 것" 중 하나로 결론 내고,
+      고칠 항목을 우선순위대로 적는다.
+
+      검증: {{run-checks.output}}
+
+      보안: {{security.output}}
+
+      테스트: {{tests.output}}
+
+      소유권·계약: {{ownership.output}}

@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "비밀값 차단과 팀 소유권 확인",
+      "trigger": "PreToolUse",
+      "description": "API 키와 .env 쓰기는 차단하고, 공유 영역(service.js 이벤트 계약, package.json, PRD.md)이나 다른 역할 소유 파일을 쓰려 하면 사용자 확인(ask)을 요청한다.",
+      "matcher": "write",
+      "action": {
+        "type": "command",
+        "command": "node scripts/hooks/guard-write.js",
+        "timeout": 15
+      }
+    }
+  ]
+}

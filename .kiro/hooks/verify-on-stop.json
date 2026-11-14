@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "턴 종료 시 전체 테스트와 보안 점검",
+      "trigger": "Stop",
+      "description": "에이전트가 응답을 마칠 때 전체 단위 테스트와 scripts/check.js를 실행하고 실패하면 알린다.",
+      "action": {
+        "type": "command",
+        "command": "node scripts/hooks/verify.js",
+        "timeout": 180
+      }
+    }
+  ]
+}
