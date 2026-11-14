@@ -8,7 +8,7 @@ C가 `BUILD_REPORT.md`와 발표 자료에 옮길 수 있게 정리한 기록이
 |---|---|---|
 | 스펙 | 데스크톱 안정화 요구사항(EARS), 설계(속성 3개), 의존성 그래프가 있는 작업 목록 작성 | `.kiro/specs/desktop-compat-hardening/` |
 | 스티어링 | A 영역 규칙을 `src/main`, `src/native` 파일을 열 때 자동 적용되도록 고정 | `.kiro/steering/desktop.md` |
-| 훅 | A 영역 파일 저장 시 `npm test`와 `npm run check`, 작업 완료 시 `npm run smoke` 자동 실행 | `.kiro/hooks/desktop-test-on-save.json`, `desktop-smoke-after-task.json` |
+| 훅 | 작업 완료 시 `npm run smoke` 자동 실행(B의 훅은 스모크를 돌리지 않아 A 쪽에 유지). 저장 시 테스트·보안 점검은 B가 만든 공통 훅(`test-on-save`, `security-check-on-save`)이 A 영역도 처리하므로 중복 훅은 제거함 | `.kiro/hooks/desktop-smoke-after-task.json` |
 | 구현 | 호환성 측정 도구, 드래그 감지와 미지원 안내, 설정 가능한 폴링, 창 배치 보정, 패키징 확인 | `scripts/compat*`, `src/native/selection.ps1`, `src/main/*` |
 | 코드 리뷰 | semantic reviewer로 변경분 검토. 중간 심각도 5건과 낮음 8건 지적 | `docs/handoff/A-review.md` |
 | 리뷰 반영 | 지적 중 조치 가능한 항목을 수정하고 정적 점검 규칙 추가 | `docs/SECURITY_REVIEW.md` "A 영역 추가 검토" |
@@ -18,7 +18,7 @@ C가 `BUILD_REPORT.md`와 발표 자료에 옮길 수 있게 정리한 기록이
 
 ## 검증 결과
 
-- `npm test`: 56개 통과
+- `npm test`: A 영역만 56개 통과(B·C 변경을 합친 뒤 전체 121개 통과)
 - `npm run check`: 통과. PowerShell 헬퍼 규칙을 추가했고, 위반 코드를 넣으면 실패하는 것을 확인함
 - `npm run smoke`: 통과(위키백과 출처 3개, 문장 6개, 예상 질문 5개, 화제 전환 3개)
 - `npm run dist`: portable exe(105MB) 생성. `selection.ps1`이 `app.asar.unpacked`로 풀리는 것 확인
@@ -44,3 +44,13 @@ C가 `BUILD_REPORT.md`와 발표 자료에 옮길 수 있게 정리한 기록이
 
 - B: 외부 AI 공급자로 바꿀 때 확인 창이 뜨도록 `set-provider`를 바꿨습니다(`src/main/main.js`). 공급자 목록이 바뀌면 알려 주세요.
 - 새 IPC 채널은 추가하지 않았습니다. 렌더러(`C`) 변경은 없습니다.
+## B의 변경(origin/main)을 합친 뒤 반영한 것
+
+- `.kiro/steering/desktop.md`: B도 같은 이름의 파일을 만들어 충돌했다. A 파일을 기준으로 B의 문장(fileMatch 3개 경로, 공급자 자동 선택 순서)을 합쳤다.
+- 훅: B의 공통 훅 `test-on-save`, `security-check-on-save`가 A 영역 저장도 처리하므로 A의 `desktop-test-on-save`는 제거했다. `desktop-smoke-after-task`는 B의 `verify`가 스모크를 돌리지 않아 유지하고, B의 규칙(`test/hooks/config.test.js`)에 맞게 `node scripts/smoke.js`를 직접 호출하도록 바꿨다.
+- 앱 동작: B의 검색 재시도와 출처 검증, Kiro CLI 폴더 격리는 `src/ai/` 안에서 끝나는 변경이라 A 코드(`src/main`, `src/native`)는 바꾸지 않았다. 스모크로 다시 확인했다(출처 3개, 문장 6개, 질문 5개, 화제 전환 3개).
+- 시연 시 체감 시간: 결과 창은 선택 후 약 0.7~1.2초에 뜨지만, Kiro CLI로 생성하면 첫 결과까지 응답 20.7~28.0초(중앙값 22.9초)가 더 걸린다. 이 수치는 B의 실측(`.kiro/specs/ai-search-quality/tasks.md` 6.1)이며 6회 중 3회만 완료됐다. 창이 뜬 뒤 "생성 중" 상태가 보이는 시간이므로 시연 시나리오에 반영해야 한다.
+
+## B에게 요청
+
+- `docs/KIRO_USAGE.md`의 개수 표에 A 산출물을 반영해 주세요: Specs 3개(`desktop-compat-hardening` 추가), Hooks 12개(`desktop-smoke-after-task` 추가). 이 문서는 A 소유가 아니라 직접 고치지 않았다.

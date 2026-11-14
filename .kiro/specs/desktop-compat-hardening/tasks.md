@@ -7,7 +7,7 @@ A 담당 데스크톱 통합 안정화 작업이다. 모든 코드 수정은 `sr
 ## Tasks
 
 - [x] 1. Kiro 기반 구축
-  - 스티어링, 훅, 스펙을 만들고 형식을 검증한다.
+  - 스티어링, 훅, 스펙을 만든다. 저장 시 테스트·점검 훅은 공통 훅(`test-on-save`, `security-check-on-save`)을 쓰고, A 전용으로는 작업 완료 후 스모크 훅만 둔다.
   - _Requirements: 6.1_
 - [x] 2. 호환성 측정 도구
   - [x] 2.1 `scripts/compat-probe.ps1`과 `npm run compat`
