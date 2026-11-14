@@ -18,7 +18,40 @@
     <button id="close" class="icon" aria-label="창 숨기기">✕</button>
   </header>
 
-  <main>
+  <!-- Kiro 로그인 화면: Kiro가 연결되지 않았으면 첫 화면. 연결되거나 '나중에 하기'를 누르면 메인 화면으로 바뀐다. -->
+  <section id="gate" class="gate" aria-labelledby="gateTitle">
+    <img class="gateMark" src="icon.svg" alt="" width="56" height="56" />
+    <h2 id="gateTitle">Kiro로 로그인하고 시작해요</h2>
+    <p id="gateMsg" class="gateMsg" role="status" aria-live="polite"></p>
+
+    <div id="gateLogin" class="gateGroup" hidden>
+      <button id="gateGithub" class="primary wide">GitHub로 로그인</button>
+      <button id="gateGoogle" class="primary wide">Google로 로그인</button>
+      <button id="gateBuilder" class="wide">AWS Builder ID로 로그인</button>
+      <button id="gateTerminal" class="linkbtn">다른 방법(조직 계정 등)은 터미널에서 로그인</button>
+    </div>
+
+    <div id="gateInstall" class="gateGroup" hidden>
+      <button id="gateInstallOpen" class="primary wide">설치 안내 열기</button>
+      <p class="hint">PowerShell에서 아래 명령으로 설치할 수 있어요.</p>
+      <code id="gateCmd" class="gateCmd"></code>
+      <button id="gateCmdCopy" class="wide">설치 명령 복사</button>
+    </div>
+
+    <div id="gateWaiting" class="gateGroup" hidden>
+      <p id="gateCode" class="gateCode" aria-label="일회용 코드" hidden></p>
+      <button id="gateOpen" class="wide" hidden>로그인 페이지 다시 열기</button>
+      <button id="gateCancel" class="wide">취소</button>
+    </div>
+
+    <div class="gateFoot">
+      <button id="gateRecheck" class="linkbtn">다시 확인</button>
+      <button id="gateSkip" class="linkbtn">나중에 하기</button>
+    </div>
+    <p class="hint gateNote">로그인 정보는 Kiro CLI가 관리해요. 아는척은 계정 정보를 읽거나 저장하지 않아요. 문장을 만들 때마다 내 Kiro 크레딧이 쓰여요.</p>
+  </section>
+
+  <main id="mainView" hidden>
     <section class="input" aria-label="분석할 내용">
       <label for="text">무슨 얘기가 나왔나요?</label>
       <textarea id="text" rows="3" maxlength="1500" placeholder="예: 양자 컴퓨터" aria-describedby="textHint"></textarea>
@@ -106,7 +139,7 @@
     </div>
   </main>
 
-  <footer>
+  <footer id="mainFoot" hidden>
     <label for="provider">AI</label>
     <select id="provider"></select>
     <span id="kiroStatus" class="conn" role="status" aria-live="polite"></span>

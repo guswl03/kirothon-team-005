@@ -77,6 +77,22 @@ if (/type\s*=\s*'unsupported'[^}]*\btext\b/.test(ps)) { bad++; console.error('na
 const html = fs.readFileSync(path.join(root, 'renderer', 'index.html'), 'utf8');
 if (!/Content-Security-Policy/.test(html) || /unsafe-inline|unsafe-eval/.test(html)) { bad++; console.error('CSP 누락 또는 unsafe 지시어'); }
 const main = fs.readFileSync(path.join(root, 'main', 'main.js'), 'utf8');
+// 외부 브라우저 열기 규칙: openExternal은 (1) 현재 세션 검색 결과의 https 링크, (2) 허용 도메인 로그인 주소,
+// (3) 고정된 설치 안내 주소만 연다. 렌더러가 넘긴 임의 주소를 그대로 열지 않는다.
+{
+  const mainLines = main.split(/\r?\n/);
+  mainLines.forEach((line, i) => {
+    if (!/shell\.openExternal\(/.test(line)) return;
+    const near = mainLines.slice(Math.max(0, i - 4), i + 1).join('\n');
+    const fixed = /shell\.openExternal\(KIRO_INSTALL_URL\)/.test(line);
+    const checked = /isAllowedLoginUrl\(/.test(near) || /\/\^https:\\\/\\\/\/i\.test\(/.test(near);
+    if (!fixed && !checked) { bad++; console.error(`main/main.js:${i + 1} openExternal 앞에 주소 검사(isAllowedLoginUrl 또는 https 확인)가 필요`); }
+  });
+  if (/const KIRO_INSTALL_URL = '(?!https:\/\/kiro\.dev\/)/.test(main)) { bad++; console.error('main/main.js KIRO_INSTALL_URL은 https://kiro.dev/ 주소여야 한다'); }
+  const loginSrc = fs.readFileSync(path.join(root, 'main', 'kiroLogin.js'), 'utf8');
+  if ((loginSrc.match(/shell:\s*false/g) || []).length < 2) { bad++; console.error('main/kiroLogin.js의 kiro-cli 실행은 모두 shell: false여야 한다'); }
+}
+
 for (const must of ['contextIsolation: true', 'sandbox: true', 'nodeIntegration: false', 'setPermissionRequestHandler']) {
   if (!main.includes(must)) { bad++; console.error(`main.js에 ${must} 필요`); }
 }

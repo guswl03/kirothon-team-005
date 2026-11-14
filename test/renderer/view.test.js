@@ -142,3 +142,27 @@ test('quickMeaning: 출처가 없거나 본문이 비면 null (지어내지 않�
   assert.equal(view.quickMeaning(null), null);
   assert.equal(view.quickMeaning([{ id: 'S1', name: 'n', extract: '   ' }]), null);
 });
+
+test('첫 화면: Kiro 연결됐거나 나중에 하기면 메인, 아니면 로그인 화면(상태 없음·확인 중 포함)', () => {
+  const { pickScreen } = require('../../src/renderer/view');
+  assert.equal(pickScreen(null), 'gate');
+  assert.equal(pickScreen({ kiro: { status: 'checking' } }), 'gate');
+  assert.equal(pickScreen({ kiro: { status: 'connected' } }), 'main');
+  for (const s of ['not_installed', 'not_logged_in', 'error']) {
+    assert.equal(pickScreen({ kiro: { status: s } }), 'gate', s);
+    assert.equal(pickScreen({ kiro: { status: s }, gateSkipped: true }), 'main', s);
+  }
+});
+
+test('로그인 화면 구성: 상태별 모드, 로그인 중이면 코드와 다시 열기, 실패 문구 우선', () => {
+  const { gateView } = require('../../src/renderer/view');
+  assert.equal(gateView({ kiro: { status: 'checking' } }).mode, 'checking');
+  assert.equal(gateView({ kiro: { status: 'not_installed' } }).mode, 'install');
+  assert.equal(gateView({ kiro: { status: 'not_logged_in' } }).mode, 'login');
+  assert.equal(gateView({ kiro: { status: 'error' } }).mode, 'login');
+  const w = gateView({ kiro: { status: 'not_logged_in' }, login: { phase: 'waiting', code: 'ABCD-EFGH', url: 'https://kiro.dev/x', message: 'm' } });
+  assert.deepEqual(w, { mode: 'waiting', message: 'm', code: 'ABCD-EFGH', canOpen: true });
+  assert.equal(gateView({ kiro: { status: 'not_logged_in' }, login: { phase: 'waiting' } }).canOpen, false);
+  assert.equal(gateView({ kiro: { status: 'not_logged_in' }, login: { phase: 'timeout', message: '시간 초과' } }).message, '시간 초과');
+  assert.equal(gateView(undefined).mode, 'checking');
+});

@@ -5,13 +5,19 @@ const {
 } = require('electron');
 const { createService } = require('../core/service');
 const { createDedupe, validateInput } = require('../core/textGuard');
-const { createKiroProvider, checkKiro } = require('../ai/providers/kiro');
+const { spawn } = require('node:child_process');
+const { createKiroProvider, checkKiro, resolveKiroCommand } = require('../ai/providers/kiro');
 const { createOpenAiProvider } = require('../ai/providers/openai');
 const { createSettings, needsConsent, shouldAskCopyFallback, PROVIDERS } = require('./settings');
 const { createSelectionWatcher, COPY_APPS } = require('./selectionWatcher');
 const { createUnsupportedGate } = require('./unsupportedGate');
 const { placeWindow } = require('./windowPlacement');
 const { makeIconPng } = require('./icon');
+const { createKiroLogin, isAllowedLoginUrl, needsLogin } = require('./kiroLogin');
+
+// Kiro 설치 안내(고정 주소)와 공식 설치 명령. 앱이 설치 스크립트를 직접 실행하지는 않는다.
+const KIRO_INSTALL_URL = 'https://kiro.dev/docs/getting-started/installation/';
+const KIRO_INSTALL_COMMAND = "irm 'https://cli.kiro.dev/install.ps1' | iex";
 
 const WIN_SIZE = { width: 440, height: 700 };
 const SHORTCUT = 'Control+Alt+Space';
@@ -27,6 +33,25 @@ const providers = { kiro: createKiroProvider(), openai: createOpenAiProvider() }
 
 // Kiro CLI 연결 상태: checking | connected | not_installed | not_logged_in | error
 let kiroStatus = { status: 'checking', message: 'Kiro CLI 연결을 확인하는 중이에요.' };
+// Kiro 로그인 화면: 연결이 안 됐으면 첫 화면이 로그인 화면이다. '나중에 하기'는 이번 실행에만 적용(저장 안 함).
+let gateSkipped = false;
+let kiroLogin = null;
+
+/** Kiro가 연결되지 않았으면 분석하지 않고 로그인 화면을 띄운다. true면 진행해도 된다. */
+function ensureKiroReady({ fromSelection = false } = {}) {
+  if (!needsLogin(kiroStatus.status)) return true;
+  gateSkipped = false;
+  pushState();
+  if (fromSelection) showNearCursor(); else showWindow();
+  return false;
+}
+const GATE_REPLY = { ok: false, gate: true, message: 'Kiro에 로그인해야 문장을 만들 수 있어요.' };
+
+/** 생성이 실패하면 연결을 다시 확인하고, 로그인이 풀렸으면 로그인 화면으로 보낸다. */
+async function recheckAfterFailure() {
+  const s = await refreshKiroStatus();
+  if (needsLogin(s.status)) { gateSkipped = false; pushState(); }
+}
 
 async function refreshKiroStatus() {
   kiroStatus = { status: 'checking', message: 'Kiro CLI 연결을 확인하는 중이에요.' };
@@ -81,6 +106,9 @@ function appState() {
     providers: PROVIDERS,
     activeProvider: { id: p.id, label: p.label, external: p.external },
     kiro: { status: kiroStatus.status, auth: kiroStatus.auth || '', message: kiroStatus.message },
+    login: kiroLogin ? kiroLogin.state : { phase: 'idle', method: '', url: '', code: '', message: '' },
+    gateSkipped,
+    kiroInstallCommand: KIRO_INSTALL_COMMAND,
     autoSupported: process.platform === 'win32',
     watching: Boolean(watcher && watcher.running),
     shortcut: SHORTCUT,
@@ -202,6 +230,7 @@ function onSelection({ text, pid, via }) {
   const v = validateInput(text);
   if (!v.ok && v.reason !== 'too_long') return;   // 빈/너무 짧은 선택은 무시
   if (!dedupe.shouldProcess(v.ok ? v.text : text.slice(0, 50))) return;
+  if (!ensureKiroReady({ fromSelection: true })) return;   // 로그인 전이면 분석 대신 로그인 화면
   showNearCursor();
   if (!v.ok) { toRenderer('svc-event', { type: 'invalid', ...v, requestId: 0, incomingText: text.slice(0, 200) }); return; }
   toRenderer('incoming', { text: v.text, source: 'selection' });
@@ -224,6 +253,7 @@ function onUnsupported({ pid, proc }) {
 }
 
 function analyzeClipboard() {
+  if (!ensureKiroReady()) return;
   const v = validateInput(clipboard.readText());
   showNearCursor({ focus: true });
   if (!v.ok) { toRenderer('svc-event', { type: 'invalid', ...v, requestId: 0 }); return; }
@@ -302,12 +332,13 @@ function registerIpc() {
     if (!p || !isStr(p.text, 5000)) return { ok: false, message: '잘못된 입력' };
     const tone = p.tone === 'work' ? 'work' : 'casual';
     settings.set({ tone });
+    if (!ensureKiroReady()) return GATE_REPLY;
     return service.analyze(p.text, { tone, note: isStr(p.note, 300) ? p.note : '', direction: isStr(p.direction, 80) ? p.direction : '' });
   }));
-  ipcMain.handle('retry', guard(() => service.retry()));
-  ipcMain.handle('set-tone', guard((tone) => { const t = tone === 'work' ? 'work' : 'casual'; settings.set({ tone: t }); pushState(); return service.getSession() ? service.changeTone(t) : { ok: true }; }));
-  ipcMain.handle('regenerate', guard((p) => service.regenerate(p && p.kind, p && p.index, p && isStr(p.direction, 80) ? p.direction : '')));
-  ipcMain.handle('followup', guard((q) => (isStr(q, 5000) ? service.followup(q) : { ok: false, message: '잘못된 입력' })));
+  ipcMain.handle('retry', guard(() => (ensureKiroReady() ? service.retry() : GATE_REPLY)));
+  ipcMain.handle('set-tone', guard((tone) => { const t = tone === 'work' ? 'work' : 'casual'; settings.set({ tone: t }); pushState(); if (!service.getSession()) return { ok: true }; return ensureKiroReady() ? service.changeTone(t) : GATE_REPLY; }));
+  ipcMain.handle('regenerate', guard((p) => (!ensureKiroReady() ? GATE_REPLY : service.regenerate(p && p.kind, p && p.index, p && isStr(p.direction, 80) ? p.direction : ''))));
+  ipcMain.handle('followup', guard((q) => { if (!isStr(q, 5000)) return { ok: false, message: '잘못된 입력' }; return ensureKiroReady() ? service.followup(q) : GATE_REPLY; }));
   ipcMain.handle('set-auto', guard((on) => setAutoAnalyze(on === true)));
   ipcMain.handle('set-provider', guard(async (id) => {
     const before = settings.get().provider;
@@ -328,6 +359,23 @@ function registerIpc() {
     return appState();
   }));
   ipcMain.handle('check-kiro', guard(async () => { await refreshKiroStatus(); return appState(); }));
+  // Kiro 로그인 화면
+  ipcMain.handle('kiro-login-start', guard((method) => {
+    if (!isStr(method, 20)) return { ok: false };
+    const r = kiroLogin.start(method);
+    pushState();
+    return r;
+  }));
+  ipcMain.handle('kiro-login-cancel', guard(() => { kiroLogin.cancel(); pushState(); return true; }));
+  // 로그인 주소는 렌더러가 넘기지 않는다. kiro-cli 출력에서 꺼낸 허용 도메인 주소만 연다.
+  ipcMain.handle('kiro-login-open', guard(() => {
+    const u = kiroLogin.state.url;
+    const ok = kiroLogin.state.phase === 'waiting' && isAllowedLoginUrl(u);
+    if (ok) shell.openExternal(u);
+    return ok;
+  }));
+  ipcMain.handle('open-kiro-install', guard(() => { shell.openExternal(KIRO_INSTALL_URL); return true; }));
+  ipcMain.handle('skip-login', guard(() => { gateSkipped = true; pushState(); return true; }));
   ipcMain.handle('copy', guard((text) => { if (isStr(text, 5000)) clipboard.writeText(text); return true; }));
   ipcMain.handle('hide', guard(() => { win.hide(); }));
   ipcMain.handle('open-link', guard((url) => {
@@ -348,6 +396,7 @@ function runSmoke() {
   const timer = setTimeout(() => finish({ ok: false, error: 'timeout' }, 1), 60000);
   win.webContents.on('console-message', (e) => smokeLog.push('console:' + e.message));
   win.webContents.once('did-finish-load', async () => {
+    if (process.env.CC_SMOKE_GATE) { await runSmokeGate(fs, finish, timer); return; }
     try {
       if (process.env.CC_SMOKE_SHOT) win.showInactive();
       const r = await win.webContents.executeJavaScript(`(async () => {
@@ -377,6 +426,37 @@ function runSmoke() {
     } catch (e) { clearTimeout(timer); finish({ ok: false, error: String(e) }, 1); }
   });
 }
+// 스모크(로그인 화면): 로그인 필요 상태에서 첫 화면이 로그인 화면인지, '나중에 하기'로 들어갔다가
+// 분석을 누르면 다시 로그인 화면으로 돌아오는지 확인한다. 실제 kiro-cli는 실행하지 않는다.
+async function runSmokeGate(fs, finish, timer) {
+  try {
+    if (process.env.CC_SMOKE_SHOT) win.showInactive();
+    const r = await win.webContents.executeJavaScript(`(async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const $ = (id) => document.getElementById(id);
+      const seen = () => ({ gate: !$('gate').hidden, main: !$('mainView').hidden });
+      for (let i = 0; i < 20 && $('gate').hidden; i++) await wait(100);
+      const first = seen();
+      const buttons = ['gateGithub', 'gateGoogle', 'gateBuilder', 'gateTerminal', 'gateSkip', 'gateRecheck'].every((id) => !!$(id));
+      const loginShown = !$('gateLogin').hidden;
+      const message = $('gateMsg').textContent;
+      $('gateSkip').click();
+      await wait(400);
+      const skipped = seen();
+      $('text').value = '양자 컴퓨터';
+      $('analyze').click();
+      await wait(600);
+      const afterAnalyze = seen();
+      return { first, buttons, loginShown, message, skipped, afterAnalyze, results: !$('results').hidden };
+    })()`);
+    clearTimeout(timer);
+    if (process.env.CC_SMOKE_SHOT) { await new Promise((res) => setTimeout(res, 800)); const img = await win.webContents.capturePage(); fs.writeFileSync(process.env.CC_SMOKE_SHOT, img.toPNG()); }
+    const ok = r.first.gate && !r.first.main && r.buttons && r.loginShown && r.skipped.main && !r.skipped.gate
+      && r.afterAnalyze.gate && !r.afterAnalyze.main && !r.results;
+    finish({ ok, mode: 'gate', ...r, events: smokeLog }, ok ? 0 : 1);
+  } catch (e) { clearTimeout(timer); finish({ ok: false, mode: 'gate', error: String(e) }, 1); }
+}
+
 // ---------- 시작 ----------
 if (!process.env.CC_SMOKE && !app.requestSingleInstanceLock()) { app.quit(); } else {
   app.on('second-instance', showWindow);
@@ -384,7 +464,23 @@ if (!process.env.CC_SMOKE && !app.requestSingleInstanceLock()) { app.quit(); } e
     if (process.env.CC_SMOKE) app.setPath('userData', require('node:path').join(require('node:os').tmpdir(), 'cc-smoke-' + process.pid));
     settings = createSettings(app.getPath('userData'));
     session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
-    service = createService({ getProvider: resolveProvider, emit: (e) => { if (process.env.CC_SMOKE) smokeLog.push(e.type + (e.stage ? ':' + e.stage : '') + (e.message ? ':' + e.message : '')); toRenderer('svc-event', e); } });
+    service = createService({ getProvider: resolveProvider, emit: (e) => {
+      if (process.env.CC_SMOKE) smokeLog.push(e.type + (e.stage ? ':' + e.stage : '') + (e.message ? ':' + e.message : ''));
+      toRenderer('svc-event', e);
+      if (!process.env.CC_SMOKE && e.type === 'error' && e.stage === 'generating') recheckAfterFailure();
+    } });
+    kiroLogin = createKiroLogin({
+      getCommand: () => resolveKiroCommand(),
+      spawnImpl: spawn,
+      check: () => checkKiro(),
+      // 로그인되면 연결 상태를 다시 읽는다(창이 메인 화면으로 바뀐다).
+      onChange: (s) => { if (s.phase === 'connected') refreshKiroStatus(); else pushState(); },
+    });
+    // 스모크: 기본은 로그인 화면을 건너뛰고, CC_SMOKE_GATE면 로그인 필요 상태로 로그인 화면 흐름을 확인한다.
+    if (process.env.CC_SMOKE) {
+      gateSkipped = !process.env.CC_SMOKE_GATE;
+      if (process.env.CC_SMOKE_GATE) kiroStatus = { status: 'not_logged_in', message: '스모크: 로그인 필요 상태' };
+    }
     let scriptPath = path.join(__dirname, '..', 'native', 'selection.ps1');
     scriptPath = scriptPath.replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
     watcher = createSelectionWatcher({
@@ -410,6 +506,6 @@ if (!process.env.CC_SMOKE && !app.requestSingleInstanceLock()) { app.quit(); } e
     }
   });
   app.on('before-quit', () => { app.isQuitting = true; });
-  app.on('will-quit', () => { globalShortcut.unregisterAll(); if (watcher) watcher.stop(); });
+  app.on('will-quit', () => { globalShortcut.unregisterAll(); if (watcher) watcher.stop(); if (kiroLogin) kiroLogin.cancel(); });
   app.on('window-all-closed', () => { /* 트레이 상주 */ });
 }

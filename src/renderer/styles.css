@@ -187,3 +187,16 @@ footer select { width:auto; padding:3px 8px; border-radius:6px; }
   background:var(--card-2); color:var(--ink); border:1px solid var(--line-strong);
   padding:7px 14px; border-radius:999px; font-size:12px; box-shadow:0 6px 20px rgba(0,0,0,.4);
 }
+
+/* ---- Kiro 로그인 화면 ---- */
+.gate { flex:1; overflow:auto; display:flex; flex-direction:column; align-items:center; text-align:center; padding:36px 28px 24px; gap:10px; }
+.gate h2 { font-size:18px; margin:6px 0 0; color:var(--ink); text-transform:none; letter-spacing:0; justify-content:center; }
+.gateMark { border-radius:14px; }
+.gateMsg { color:var(--sub); margin:0 0 6px; max-width:320px; line-height:1.55; }
+.gateGroup { display:flex; flex-direction:column; gap:8px; width:100%; max-width:300px; align-items:stretch; }
+.gateGroup button.wide { width:100%; min-height:40px; }
+.gateGroup .linkbtn { align-self:center; margin-top:4px; }
+.gateCode { font-size:26px; font-weight:700; letter-spacing:3px; color:var(--brand); margin:4px 0; font-variant-numeric:tabular-nums; }
+.gateCmd { display:block; padding:8px 10px; border-radius:8px; background:var(--card); border:1px solid var(--line); color:var(--ink); font-size:12px; word-break:break-all; text-align:left; user-select:all; }
+.gateFoot { display:flex; gap:18px; justify-content:center; margin-top:10px; }
+.gateNote { max-width:320px; margin-top:auto; padding-top:16px; }
