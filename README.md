@@ -1,4 +1,6 @@
-# 대화 치트키
+# 아는척
+
+<img src="docs/assets/icon.svg" alt="아는척 아이콘" width="72" />
 
 낯선 주제가 대화에 등장했을 때, **텍스트를 드래그하기만 하면** 바로 쓸 수 있는 문장과 예상 질문 답변, 자연스러운 화제 전환 문장을 보여주는 Windows 데스크톱 대화 보조 앱입니다.
 
@@ -72,7 +74,7 @@ npm start
 ### 검증 명령
 
 ```bash
-npm test          # 단위 + 속성 기반 테스트 (107개)
+npm test          # 단위 + 속성 기반 테스트 (121개)
 npm run check     # 보안 정적 점검
 npm run smoke     # 실제 Electron 창에서 검색~렌더링 종단 확인 (네트워크 필요)
 npm run pdf       # PRESENTATION.pdf 재생성

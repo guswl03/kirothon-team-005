@@ -93,9 +93,10 @@ function toRenderer(channel, payload) { if (win && !win.isDestroyed()) win.webCo
 // ---------- 창 ----------
 function createWindow() {
   win = new BrowserWindow({
-    ...WIN_SIZE, minWidth: 380, minHeight: 480, show: false, alwaysOnTop: true, skipTaskbar: false,
-    title: '대화 치트키', autoHideMenuBar: true, backgroundColor: '#f7f7fb',
-    icon: nativeImage.createFromBuffer(makeIconPng(64)),
+    // 항상 위 고정은 하지 않는다. 다른 창을 누르면 그 창이 앞으로 온다.
+    ...WIN_SIZE, minWidth: 380, minHeight: 480, show: false, alwaysOnTop: false, skipTaskbar: false,
+    title: '아는척', autoHideMenuBar: true, backgroundColor: '#19161d',
+    icon: nativeImage.createFromBuffer(makeIconPng(256)),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true,
@@ -118,7 +119,12 @@ function showNearCursor({ focus = false } = {}) {
   const size = { width: Math.min(w, area.width), height: Math.min(h, area.height) };
   const pos = placeWindow(cursor, size, area);
   win.setBounds({ ...pos, ...size });
-  if (focus) { win.show(); win.focus(); } else { win.showInactive(); }
+  if (focus) { win.show(); win.focus(); return; }
+  // 자동 분석으로 뜰 때는 포커스를 뺏지 않고 지금 쓰는 창 위에 한 번만 올린다. 바로 고정을 풀어서
+  // 사용자가 다른 창을 누르면 그 창이 앞으로 온다.
+  win.setAlwaysOnTop(true);
+  win.showInactive();
+  win.setAlwaysOnTop(false);
 }
 
 function showWindow() {
@@ -231,7 +237,7 @@ function rebuildTray() {
 
 function createTray() {
   tray = new Tray(nativeImage.createFromBuffer(makeIconPng(32)));
-  tray.setToolTip('대화 치트키');
+  tray.setToolTip('아는척');
   tray.on('click', showWindow);
   rebuildTray();
 }

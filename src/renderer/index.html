@@ -4,12 +4,12 @@
   <meta charset="utf-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>대화 치트키</title>
+  <title>아는척</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="top">
-    <h1>대화 치트키</h1>
+    <h1><img class="mark" src="icon.svg" alt="" width="22" height="22" />아는척 <span class="tag">with Kiro</span></h1>
     <label class="switch" title="드래그로 선택한 텍스트를 자동으로 분석해요">
       <input type="checkbox" id="auto" role="switch" />
       <span class="track" aria-hidden="true"></span>
@@ -20,8 +20,9 @@
 
   <main>
     <section class="input" aria-label="분석할 내용">
-      <label for="text">선택한 내용 <span class="hint">(자동 감지가 안 되면 복사해서 붙여넣으세요)</span></label>
-      <textarea id="text" rows="3" maxlength="1500" placeholder="예: 양자 컴퓨터"></textarea>
+      <label for="text">무슨 얘기가 나왔나요?</label>
+      <textarea id="text" rows="3" maxlength="1500" placeholder="예: 양자 컴퓨터" aria-describedby="textHint"></textarea>
+      <p id="textHint" class="hint"><kbd>Enter</kbd> 바로 분석 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 줄바꿈</p>
       <div class="row">
         <div class="seg" role="radiogroup" aria-label="말투">
           <label><input type="radio" name="tone" value="casual" checked /><span>일상 대화</span></label>

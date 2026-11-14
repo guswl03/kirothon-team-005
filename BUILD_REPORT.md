@@ -19,11 +19,12 @@ Kiro를 어느 단계에서 어떻게 썼는지 기록합니다. 검증 수치�
 
 ## 최종 검증 결과
 
-- `npm test`: 107개 중 107개 통과 (입력 검증, 검색·재검색, 스키마 정규화·출처 내용 검증, 프롬프트, 서비스 흐름, 공급자, Kiro 실측 스크립트, Hook, MCP, 속성 기반 테스트, 화면 이벤트 계약, 결과 창 판단 로직).
+- `npm test`: 121개 중 121개 통과 (입력 검증, 검색·재검색, 스키마 정규화·출처 내용 검증, 프롬프트, 서비스 흐름, 공급자, Kiro 실측 스크립트, Hook, MCP, 속성 기반 테스트, 화면 이벤트 계약, 결과 창 판단 로직, 입력 Enter 키 판단).
+- 앱 이름을 "아는척"으로 바꾸고 결과 창을 Kiro IDE 다크 테마 색으로 다시 꾸몄습니다. 아이콘은 `docs/assets/icon.svg`(창·트레이용 PNG는 같은 도형으로 생성). 창의 항상 위 고정을 없앴고(자동 분석으로 뜰 때만 한 번 앞으로), 입력 칸에서 Enter로 바로 분석합니다(Shift+Enter 줄바꿈, 한글 조합 중 Enter 무시).
 - `npm run check`: 위험 패턴 점검 통과.
-- `npm run smoke`: AI·검색 보강(`main` `dad4c8d`)을 합친 뒤 실제 Electron 창에서 "양자 컴퓨터"를 위키백과로 검색(출처 3개)하고 문장 6개, 예상 질문 5개, 화제 전환 3개를 렌더링. 이벤트 순서 `start, stage:searching, sources, stage:generating, result, stage:done`, 렌더러에 Node 접근 없음 확인. 오프라인 간이 공급자 사용. 같은 실행에서 `docs/assets/screenshot.png`를 새로 찍었고, `npm run pdf`로 `PRESENTATION.pdf`를 다시 만들었습니다.
+- `npm run smoke`: AI·검색 보강(`main` `dad4c8d`)을 합친 뒤 실제 Electron 창에서 "양자 컴퓨터"를 위키백과로 검색(출처 3개)하고 문장 6개, 예상 질문 5개, 화제 전환 3개를 렌더링. 이벤트 순서 `start, stage:searching, sources, stage:generating, result, stage:done`, 렌더러에 Node 접근 없음 확인. 오프라인 간이 모드가 없어진 뒤로 smoke는 테스트용 고정 응답 공급자를 씁니다. 같은 실행에서 `docs/assets/screenshot.png`를 새로 찍었고, `npm run pdf`로 `PRESENTATION.pdf`를 다시 만들었습니다.
 - Kiro CLI 실측(B, 2026-11-14, kiro-cli 3.3.0, 로그인 세션): 6회 중 3회 완료. JSON 파싱 3/3, 목표 개수 충족 3/3, 응답 20.7~28.0초(중앙값 22.9초). 자세한 표는 `.kiro/specs/ai-search-quality/tasks.md` 6.1.
-- 결과 창 수정 중 Electron이 실행 정책으로 막혔던 동안에는, 실제 `renderer.js`를 가짜 DOM에서 실제 서비스·오프라인 공급자와 함께 돌리는 임시 하네스로 아래 결함 수정을 24개 점검 항목으로 확인했습니다(모두 통과). 하네스는 저장소에 포함하지 않았습니다.
+- 결과 창 수정 중 Electron이 실행 정책으로 막혔던 동안에는, 실제 `renderer.js`를 가짜 DOM에서 실제 서비스·당시 오프라인 공급자와 함께 돌리는 임시 하네스로 아래 결함 수정을 24개 점검 항목으로 확인했습니다(모두 통과). 하네스는 저장소에 포함하지 않았습니다.
 - `npm audit`: 런타임 의존성 없음. 개발 도구(electron-builder 하위 minimatch)에 중간 심각도 6건.
 - 테스트 중 발견해 고친 결함: 렌더러 `api` 변수 이름 충돌로 화면이 동작하지 않던 문제, `hidden` 속성이 CSS에 덮여 빈 배너가 보이던 문제, 창 크기가 작업 영역보다 클 때의 위치 계산 가정(테스트에서 발견).
 - 결과 창(UI) 점검에서 발견해 고친 결함:

@@ -230,7 +230,12 @@ function submit() {
 }
 
 $('analyze').addEventListener('click', submit);
-$('text').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit(); });
+// Enter만 누르면 바로 분석, Shift+Enter는 줄바꿈. 분석 중에는 중복 요청하지 않는다.
+$('text').addEventListener('keydown', (e) => {
+  if (!view.isSubmitKey(e)) return;
+  e.preventDefault();
+  if (!state.busy) submit();
+});
 $('retry').addEventListener('click', () => { setError(''); bridge.retry(); });
 $('close').addEventListener('click', () => bridge.hide());
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') bridge.hide(); });
