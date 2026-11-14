@@ -4,7 +4,7 @@
 
 낯선 주제가 대화에 등장했을 때 선택한 텍스트를 바탕으로 바로 쓸 문장과 예상 질문 답변, 자연스러운 화제 전환을 제안하는 Windows 데스크톱 대화 보조 앱입니다.
 
-**Demo:** [Windows 11용 실행 파일 v0.1.0 다운로드 (프리릴리스)](https://github.com/guswl03/kirithon-team-005/releases/tag/v0.1.0) · Kiro CLI 설치와 로그인이 필요합니다. 시연 영상 링크는 추후 추가 예정입니다.
+**Demo:** [Windows 11용 실행 파일 v0.1.0 다운로드 (프리릴리스)](https://github.com/guswl03/kirothon-team-005/releases/tag/v0.1.0) · Kiro CLI 설치와 로그인이 필요합니다. 시연 영상 링크는 추후 추가 예정입니다.
 
 ![아는척 결과 창](docs/assets/screenshot.png)
 
