@@ -61,5 +61,12 @@
     return s && s.basis === 'sourced' && Array.isArray(s.sourceIds) ? s.sourceIds : [];
   }
 
-  return { searchMessage, composeNotice, pendingKey, createPending, canSubmitFollowup, invalidTarget, statementSourceIds };
+  /** 입력 칸에서 Enter만 누르면 분석한다. Shift+Enter는 줄바꿈, 한글 조합 중 Enter는 무시한다. */
+  function isSubmitKey(e) {
+    if (!e || e.key !== 'Enter') return false;
+    if (e.isComposing || e.keyCode === 229) return false;
+    return !e.shiftKey && !e.altKey;
+  }
+
+  return { searchMessage, composeNotice, pendingKey, createPending, canSubmitFollowup, invalidTarget, statementSourceIds, isSubmitKey };
 }));

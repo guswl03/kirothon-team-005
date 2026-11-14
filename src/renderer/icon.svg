@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="아는척">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b080ff"/>
+      <stop offset="1" stop-color="#7138cc"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="58" fill="url(#bg)"/>
+  <!-- 흰자 -->
+  <ellipse cx="94" cy="128" rx="30" ry="44" fill="#fff"/>
+  <ellipse cx="162" cy="128" rx="30" ry="44" fill="#fff"/>
+  <!-- 눈동자: 오른쪽 위로 살짝, 아는 척 곁눈질 -->
+  <ellipse cx="104" cy="118" rx="13" ry="19" fill="#2a1652"/>
+  <ellipse cx="172" cy="118" rx="13" ry="19" fill="#2a1652"/>
+</svg>

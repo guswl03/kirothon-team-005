@@ -103,3 +103,14 @@ test('statementSourceIds: 실제 schema 정규화 결과와 함께 써도 genera
   assert.equal(r.statements[1].basis, 'sourced');
   assert.deepEqual(view.statementSourceIds(r.statements[1]), ['S1']);
 });
+
+test('isSubmitKey: Enter만 누르면 분석, Shift+Enter와 한글 조합 중 Enter는 제외', () => {
+  assert.equal(view.isSubmitKey({ key: 'Enter' }), true);
+  assert.equal(view.isSubmitKey({ key: 'Enter', ctrlKey: true }), true);
+  assert.equal(view.isSubmitKey({ key: 'Enter', shiftKey: true }), false);
+  assert.equal(view.isSubmitKey({ key: 'Enter', altKey: true }), false);
+  assert.equal(view.isSubmitKey({ key: 'Enter', isComposing: true }), false);
+  assert.equal(view.isSubmitKey({ key: 'Enter', keyCode: 229 }), false);
+  assert.equal(view.isSubmitKey({ key: 'a' }), false);
+  assert.equal(view.isSubmitKey(null), false);
+});

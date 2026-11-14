@@ -1,6 +1,6 @@
 {
   "name": "conversation-cheatsheet",
-  "productName": "대화 치트키",
+  "productName": "아는척",
   "version": "0.1.0",
   "description": "선택한 텍스트로 대화 문장, 예상 질문 답변, 화제 전환을 제공하는 Windows 데스크톱 대화 보조 앱",
   "main": "src/main/main.js",
@@ -20,9 +20,9 @@
   },
   "build": {
     "appId": "dev.kirothon.conversation-cheatsheet",
-    "productName": "대화 치트키",
+    "productName": "아는척",
     "files": ["src/**/*", "package.json"],
     "asarUnpack": ["src/native/**"],
-    "win": { "target": ["portable"] }
+    "win": { "target": ["portable"], "icon": "docs/assets/icon.png" }
   }
 }
