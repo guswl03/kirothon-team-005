@@ -81,3 +81,25 @@ test('invalidTarget: scope=followup이면 후속 질문 칸, 아니면 상단 (�
   assert.equal(view.invalidTarget({ type: 'invalid' }), 'main');
   assert.equal(view.invalidTarget(null), 'main');
 });
+
+test('statementSourceIds: basis가 sourced인 문장만 출처를 표시한다', () => {
+  assert.deepEqual(view.statementSourceIds({ basis: 'sourced', sourceIds: ['S1', 'S2'] }), ['S1', 'S2']);
+  // 모델이 general로 표시했지만 출처 ID가 남은 경우(B의 schema에서 가능)는 일반 표현으로 보인다.
+  assert.deepEqual(view.statementSourceIds({ basis: 'general', sourceIds: ['S1'] }), []);
+  assert.deepEqual(view.statementSourceIds({ basis: 'sourced', sourceIds: [] }), []);
+  assert.deepEqual(view.statementSourceIds({ sourceIds: ['S1'] }), []);
+  assert.deepEqual(view.statementSourceIds(null), []);
+});
+
+test('statementSourceIds: 실제 schema 정규화 결과와 함께 써도 general 문장에는 출처가 붙지 않는다', () => {
+  const { normalizeResult } = require('../../src/ai/schema');
+  const sources = [{ id: 'S1', title: '테스트', extract: '테스트는 어떤 것의 성능을 확인하는 과정이다.' }];
+  const r = normalizeResult({ statements: [
+    { text: '테스트는 성능을 확인하는 과정이에요.', basis: 'general', sourceIds: ['S1'] },
+    { text: '테스트는 성능을 확인하는 과정이래요.', basis: 'sourced', sourceIds: ['S1'] },
+  ] }, sources);
+  assert.equal(r.statements[0].basis, 'general');
+  assert.deepEqual(view.statementSourceIds(r.statements[0]), []);
+  assert.equal(r.statements[1].basis, 'sourced');
+  assert.deepEqual(view.statementSourceIds(r.statements[1]), ['S1']);
+});

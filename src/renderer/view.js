@@ -56,5 +56,10 @@
     return ev && ev.scope === 'followup' ? 'followup' : 'main';
   }
 
-  return { searchMessage, composeNotice, pendingKey, createPending, canSubmitFollowup, invalidTarget };
+  /** 문장에 붙일 출처 ID. basis가 'sourced'인 문장만 출처를 표시하고, 나머지는 일반 표현으로 보인다. */
+  function statementSourceIds(s) {
+    return s && s.basis === 'sourced' && Array.isArray(s.sourceIds) ? s.sourceIds : [];
+  }
+
+  return { searchMessage, composeNotice, pendingKey, createPending, canSubmitFollowup, invalidTarget, statementSourceIds };
 }));

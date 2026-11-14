@@ -61,16 +61,18 @@ npm start
 
 | 공급자 | 설정 | 비고 |
 |---|---|---|
-| Kiro CLI | `kiro-cli` 설치 후 `KIRO_API_KEY` 환경 변수 설정 (`KIRO_CLI_PATH`로 경로 지정 가능) | `kiro-cli chat --v3 --no-interactive`를 stdin 프롬프트로 호출. 서비스용 사용 허용 여부는 규정 확인 필요 |
+| Kiro CLI | `kiro-cli` 설치 후 `kiro-cli login` 또는 `KIRO_API_KEY` 환경 변수 설정 (`KIRO_CLI_PATH`로 경로, `KIRO_TIMEOUT_MS`로 제한 시간 지정 가능, 기본 120초) | `kiro-cli chat --v3 --no-interactive`를 stdin 프롬프트로 호출하고, 저장소 설정이 섞이지 않게 앱 전용 임시 폴더에서 실행. 실측: 응답 20.7~28.0초, JSON 3/3 성공(3회). 서비스용 사용 허용 여부는 규정 확인 필요 |
 | OpenAI 호환 | `CHEAT_LLM_BASE_URL`, `CHEAT_LLM_API_KEY`, `CHEAT_LLM_MODEL` | https 또는 localhost만 허용 |
 | 오프라인 간이 | 설정 없음 | 검색된 자료 문장을 인용하는 제한적 품질. 외부 AI 전송 없음 |
 
-창 하단에서 공급자를 직접 고를 수 있고, "자동 선택"은 Kiro, OpenAI 호환, 오프라인 순으로 사용합니다.
+창 하단에서 공급자를 직접 고를 수 있고, "자동 선택"은 Kiro, OpenAI 호환, 오프라인 순으로 사용합니다. 자동 선택은 `KIRO_API_KEY`가 있을 때만 Kiro를 고르므로, `kiro-cli login` 세션만 있다면 창 하단에서 "Kiro CLI"를 직접 선택하세요.
+
+검색은 위키백과(ko)에서 시작하고, 결과가 부족하면 핵심 단어로 다시 찾고 영어 위키백과까지 찾아봅니다. 모델이 붙인 출처는 문장 내용이 출처 본문과 충분히 겹칠 때만 남기고, 아니면 "일반 표현"으로 보여 줍니다.
 
 ### 검증 명령
 
 ```bash
-npm test          # 단위 + 속성 기반 테스트 (57개)
+npm test          # 단위 + 속성 기반 테스트 (107개)
 npm run check     # 보안 정적 점검
 npm run smoke     # 실제 Electron 창에서 검색~렌더링 종단 확인 (네트워크 필요)
 npm run pdf       # PRESENTATION.pdf 재생성
@@ -84,7 +86,7 @@ npm run dist      # 휴대용 exe 빌드 (electron-builder)
 
 ## 문서
 
-- 명세: `.kiro/specs/conversation-cheatsheet/` (requirements, design, tasks)
+- 명세: `.kiro/specs/conversation-cheatsheet/`(제품), `.kiro/specs/ai-search-quality/`(검색·출처 품질 개선, Kiro 실측) (각각 requirements, design, tasks)
 - 보안 검토: [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md)
-- Kiro 활용 기록: [BUILD_REPORT.md](BUILD_REPORT.md)
+- Kiro 활용 기록: [BUILD_REPORT.md](BUILD_REPORT.md), 기능별 정리: [docs/KIRO_USAGE.md](docs/KIRO_USAGE.md)
 - 원본 PRD: [PRD.md](PRD.md)

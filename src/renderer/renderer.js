@@ -67,13 +67,13 @@ function render() {
   if (!r) return;
   const first = r.statements[0];
   $('heroText').textContent = first ? first.text : '활용할 문장을 만들지 못했어요.';
-  $('heroMeta').replaceChildren(...(first ? [].concat(srcBadges(first.sourceIds)) : []));
+  $('heroMeta').replaceChildren(...(first ? [].concat(srcBadges(view.statementSourceIds(first))) : []));
   $('heroCopy').disabled = !first;
   $('heroCopy').onclick = () => first && copy(first.text);
 
   $('statements').replaceChildren(...r.statements.map((s, i) => h('li', {},
     h('p', { class: 'text' }, s.text),
-    h('div', { class: 'meta' }, srcBadges(s.sourceIds)),
+    h('div', { class: 'meta' }, srcBadges(view.statementSourceIds(s))),
     h('div', { class: 'actions' }, copyBtn(s.text), regenBtn('statement', i)))));
 
   $('questions').replaceChildren(...r.questions.map((q, qi) => h('details', { class: 'q' },
