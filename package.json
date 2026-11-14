@@ -10,6 +10,7 @@
     "start": "electron .",
     "test": "node --test \"test/**/*.test.js\"",
     "smoke": "node scripts/smoke.js",
+    "compat": "node scripts/compat.js",
     "check": "node scripts/check.js",
     "pdf": "electron scripts/make-pdf.js",
     "dist": "electron-builder --win portable"

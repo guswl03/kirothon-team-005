@@ -10,6 +10,7 @@ const { createOpenAiProvider } = require('../ai/providers/openai');
 const { createOfflineProvider } = require('../ai/providers/offline');
 const { createSettings, PROVIDERS } = require('./settings');
 const { createSelectionWatcher } = require('./selectionWatcher');
+const { createUnsupportedGate } = require('./unsupportedGate');
 const { placeWindow } = require('./windowPlacement');
 const { makeIconPng } = require('./icon');
 
@@ -100,7 +101,7 @@ async function setAutoAnalyze(on) {
         type: 'question', buttons: ['동의하고 켜기', '취소'], defaultId: 1, cancelId: 1, title: '자동 분석 안내',
         message: '선택한 텍스트가 검색과 AI 처리에 사용돼요',
         detail: [
-          '• 드래그로 선택한 텍스트만 읽어요. 전체 화면, 문서, 클립보드는 수집하지 않아요.',
+          '• 선택한 텍스트만 읽어요(드래그나 키보드 선택 모두 해당). 전체 화면, 문서, 클립보드는 자동으로 수집하지 않아요.',
           '• 비밀번호 입력란은 읽지 않아요.',
           '• 선택한 내용은 위키백과 검색 요청에 포함돼요.',
           `• 문장 생성: ${p.label}${p.external ? ' (선택한 내용이 외부 서비스로 전달돼요)' : ' (이 PC에서만 처리해요)'}`,
@@ -137,6 +138,19 @@ function onSelection({ text, pid }) {
   if (!v.ok) { toRenderer('svc-event', { type: 'invalid', ...v, requestId: 0, incomingText: text.slice(0, 200) }); return; }
   toRenderer('incoming', { text: v.text, source: 'selection' });
   service.analyze(v.text, { tone: settings.get().tone });
+}
+
+// 자동 감지가 안 되는 프로그램: 프로세스당 한 번만 대체 경로를 안내한다(선택 텍스트·창 제목은 사용하지 않는다).
+const unsupportedGate = createUnsupportedGate();
+function onUnsupported({ pid, proc }) {
+  if (!settings.get().autoAnalyze) return;
+  if (ownPids().has(pid)) return;
+  if (!unsupportedGate.shouldNotify({ pid, proc })) return;
+  showNearCursor();
+  toRenderer('svc-event', {
+    type: 'notice', requestId: 0,
+    message: `이 프로그램에서는 자동 감지가 안 돼요. 텍스트를 복사(Ctrl+C)한 뒤 ${SHORTCUT}를 누르거나 아래 칸에 붙여넣어 주세요.`,
+  });
 }
 
 function analyzeClipboard() {
@@ -189,7 +203,23 @@ function registerIpc() {
   ipcMain.handle('regenerate', guard((p) => service.regenerate(p && p.kind, p && p.index, p && isStr(p.direction, 80) ? p.direction : '')));
   ipcMain.handle('followup', guard((q) => (isStr(q, 5000) ? service.followup(q) : { ok: false, message: '잘못된 입력' })));
   ipcMain.handle('set-auto', guard((on) => setAutoAnalyze(on === true)));
-  ipcMain.handle('set-provider', guard((id) => { settings.set({ provider: PROVIDERS.includes(id) ? id : 'auto' }); pushState(); return appState(); }));
+  ipcMain.handle('set-provider', guard(async (id) => {
+    const before = settings.get().provider;
+    const wasExternal = resolveProvider().external;
+    settings.set({ provider: PROVIDERS.includes(id) ? id : 'auto' });
+    const p = resolveProvider();
+    // 동의 이후 외부 AI로 바꾸면 선택 내용이 밖으로 나가므로 다시 확인한다.
+    if (p.external && !wasExternal) {
+      const { response } = await dialog.showMessageBox(win, {
+        type: 'question', buttons: ['외부 AI 사용', '취소'], defaultId: 1, cancelId: 1, title: 'AI 공급자 변경',
+        message: `${p.label}를 쓰면 선택한 내용이 외부 서비스로 전달돼요`,
+        detail: '외부 서비스의 보관 정책은 각 제공자 기준이에요. 계속할까요?',
+      });
+      if (response !== 0) settings.set({ provider: before });
+    }
+    pushState();
+    return appState();
+  }));
   ipcMain.handle('copy', guard((text) => { if (isStr(text, 5000)) clipboard.writeText(text); return true; }));
   ipcMain.handle('hide', guard(() => { win.hide(); }));
   ipcMain.handle('open-link', guard((url) => {
@@ -208,7 +238,7 @@ function runSmoke() {
   const out = process.env.CC_SMOKE_OUT;
   const finish = (obj, code) => { try { fs.writeFileSync(out, JSON.stringify(obj, null, 2)); } catch { /* ignore */ } app.exit(code); };
   const timer = setTimeout(() => finish({ ok: false, error: 'timeout' }, 1), 60000);
-  win.webContents.on('console-message', (_e, _l, msg) => smokeLog.push('console:' + msg));
+  win.webContents.on('console-message', (e) => smokeLog.push('console:' + e.message));
   win.webContents.once('did-finish-load', async () => {
     try {
       if (process.env.CC_SMOKE_SHOT) win.showInactive();
@@ -249,8 +279,8 @@ if (!process.env.CC_SMOKE && !app.requestSingleInstanceLock()) { app.quit(); } e
     let scriptPath = path.join(__dirname, '..', 'native', 'selection.ps1');
     scriptPath = scriptPath.replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
     watcher = createSelectionWatcher({
-      scriptPath, onSelection,
-      onError: (e) => toRenderer('svc-event', { type: 'notice', message: `자동 감지를 시작하지 못했어요. ${e.message}`, requestId: 0 }),
+      scriptPath, onSelection, onUnsupported,
+      onError: (e) => toRenderer('svc-event', { type: 'notice', message: `자동 감지에 문제가 생겼어요. ${e.message}`, requestId: 0 }),
     });
     registerIpc();
     if (process.env.CC_SMOKE) settings.set({ provider: 'offline' });

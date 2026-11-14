@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "데스크톱 코드 저장 시 테스트와 점검",
+      "trigger": "PostFileSave",
+      "description": "A 담당 영역 파일을 저장하면 단위 테스트와 보안 정적 점검을 실행한다.",
+      "matcher": "src[\\\\/](main|native)[\\\\/]|test[\\\\/]desktop[\\\\/]",
+      "action": {
+        "type": "command",
+        "command": "npm test --silent && npm run check --silent",
+        "timeout": 120
+      }
+    }
+  ]
+}

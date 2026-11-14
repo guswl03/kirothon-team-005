@@ -37,7 +37,7 @@ test('설정 저장: 선택 텍스트 같은 다른 필드는 저장하지 않�
 });
 
 test('선택 감지 헬퍼 출력 파싱', () => {
-  assert.deepEqual(parseLine('{"text":"안녕","pid":12}'), { text: '안녕', pid: 12 });
+  assert.deepEqual(parseLine('{"text":"안녕","pid":12}'), { type: 'selection', text: '안녕', pid: 12 });
   assert.equal(parseLine('not json'), null);
   assert.equal(parseLine('{"pid":1}'), null);
 });
