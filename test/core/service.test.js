@@ -73,12 +73,26 @@ test('생성 실패 시 retryable 오류를 알리고 retry로 복구된다', as
   assert.ok(events.some((e) => e.type === 'result'));
 });
 
-test('모델이 JSON이 아닌 응답을 주면 오류로 처리한다', async () => {
-  const provider = { id: 'x', label: 'x', generate: async () => '죄송합니다' };
+test('모델이 JSON이 아닌 응답을 두 번 주면 오류로 처리한다(재시도는 한 번만)', async () => {
+  let calls = 0;
+  const provider = { id: 'x', label: 'x', generate: async () => { calls++; return '죄송합니다'; } };
   const { svc, events } = setup({ provider });
   await svc.analyze('소프트웨어 테스트');
+  assert.equal(calls, 2);
   assert.ok(events.some((e) => e.type === 'error'));
   assert.ok(!events.some((e) => e.type === 'result'));
+});
+
+test('실측에서 나온 깨진 JSON(따옴표 없는 문자열 값)이면 한 번 다시 호출해 복구한다', async () => {
+  const fake = createFakeProvider();
+  let calls = 0;
+  const broken = '{"statements":[],"questions":[{"question":같이 갈래요?,"answers":[]}]}';
+  const provider = { id: 'kiro', label: 'Kiro CLI', generate: async (a) => (++calls === 1 ? broken : fake.generate(a)) };
+  const { svc, events } = setup({ provider });
+  await svc.analyze('소프트웨어 테스트');
+  assert.equal(calls, 2);
+  assert.ok(events.some((e) => e.type === 'result'));
+  assert.ok(!events.some((e) => e.type === 'error'));
 });
 
 test('요청 처리 중 새 선택이 오면 이전 요청의 결과는 표시되지 않는다', async () => {

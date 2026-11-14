@@ -78,6 +78,9 @@ B 역할(AI·검색) 품질 개선 작업 목록이다. 브랜치는 `feat/ai`. 
   - [x] 8.4 프롬프트 맥락 파악 지침, `context` 필드, 일상 대화 기본, 후속 질문에 맥락 전달
     - 테스트 `test/ai/prompt.test.js`, `test/ai/schema.test.js`
     - _Requirements: 8.5, 8.6, 8.7_
+  - [x] 8.6 밈 해설 중심 프롬프트(밈 유형 8가지 점검, 해석 2개, 예문 `example`), 끝에 JSON 형식 재강조, 깨진 JSON이면 1회 자동 재시도
+    - 계기: 실측 9회 중 1회 문자열 따옴표 누락(`"question":같이 갈래요?`). 테스트 `test/ai/prompt.test.js`, `test/ai/schema.test.js`, `test/core/service.test.js`
+    - 실제 Kiro 3회(치이카와 토벌 / 폼 미쳤다·갓생·ㅇㅈ / 킹받네·알잘딱깔센): JSON 3/3(재시도 0회), 응답 20.1~22.8초, 뜻풀이 7개 중 high 6개·low 1개(토벌). 목표 개수 미달 1회(활용 문장 1/5)
   - [ ] 8.5 실제 Kiro로 일상 대화 입력 재측정(`node scripts/measure-kiro.js --runs 1`)과 문장 직접 확인
     - _Requirements: 5.1, 8.5_
 
