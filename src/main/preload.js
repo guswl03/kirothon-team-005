@@ -17,6 +17,12 @@ contextBridge.exposeInMainWorld('api', {
   setAuto: (on) => ipcRenderer.invoke('set-auto', on),
   setProvider: (id) => ipcRenderer.invoke('set-provider', id),
   checkKiro: () => ipcRenderer.invoke('check-kiro'),
+  // Kiro 로그인 화면. 로그인 주소는 메인 프로세스가 가진 값만 연다(인자 없음).
+  kiroLogin: (method) => ipcRenderer.invoke('kiro-login-start', method),
+  kiroLoginCancel: () => ipcRenderer.invoke('kiro-login-cancel'),
+  kiroLoginOpen: () => ipcRenderer.invoke('kiro-login-open'),
+  openKiroInstall: () => ipcRenderer.invoke('open-kiro-install'),
+  skipLogin: () => ipcRenderer.invoke('skip-login'),
   copy: (t) => ipcRenderer.invoke('copy', t),
   hide: () => ipcRenderer.invoke('hide'),
   openLink: (u) => ipcRenderer.invoke('open-link', u),

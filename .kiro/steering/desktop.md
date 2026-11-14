@@ -21,6 +21,13 @@ fileMatchPattern: ["src/main/**", "src/native/**", "test/desktop/**"]
 - 자동 감지가 안 되는 프로그램은 프로세스당 한 번만 대체 경로(복사 후 `Ctrl+Alt+Space`, 붙여넣기)를 안내한다.
 - 동의는 공급자별이다(`consentProvider`, `needsConsent`). 동의 때 안내한 곳과 다른 공급자로 바뀌면 확인 창으로 다시 동의를 받고, 자동 분석 중 공급자가 바뀌면 자동 분석을 멈춘다. 예전(오프라인 간이 모드 시절) 동의는 인정하지 않는다.
 
+## Kiro 로그인 화면
+- Kiro가 연결되지 않았으면(`needsLogin`: 미설치, 로그인 필요, 확인 실패) 첫 화면은 로그인 화면이다. OpenAI 호환 설정이 있어도 Kiro 로그인이 필요하다.
+- '나중에 하기'(`gateSkipped`)는 메모리에만 두고 저장하지 않는다. 분석, 재시도, 재생성, 후속 질문, 자동 분석, 클립보드 분석은 연결 전이면 실행하지 않고 로그인 화면을 띄운다(`ensureKiroReady`).
+- 로그인은 `src/main/kiroLogin.js`가 `kiro-cli login --social github|google` 또는 `--license free`를 창 없이(`shell: false`) 실행하고, 2초마다 `whoami`로 확인한다. 5분이 지나거나 취소하면 프로세스를 끝낸다. 'terminal'은 새 콘솔 창으로 `kiro-cli login`을 띄운다.
+- CLI 출력은 상태에 담지 않는다. 허용 도메인(`LOGIN_HOSTS`)의 https 로그인 주소와 일회용 코드만 꺼낸다. 로그인 주소는 렌더러가 넘기지 않고, 메인 프로세스가 가진 값만 연다.
+- 설치는 앱이 실행하지 않는다. 고정 주소(`KIRO_INSTALL_URL`) 안내와 설치 명령 복사만 한다.
+
 ## 보안 옵션과 IPC
 - IPC는 `event.sender`를 확인하고, preload는 화이트리스트 API만 노출한다.
 - IPC 채널을 추가하면 `main.js`, `preload.js`, `renderer.js`가 함께 바뀐다. 렌더러는 C 담당이므로 한 PR로 묶는다.

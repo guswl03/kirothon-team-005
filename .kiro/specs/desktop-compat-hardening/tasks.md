@@ -48,6 +48,18 @@ A 담당 데스크톱 통합 안정화 작업이다. 모든 코드 수정은 `sr
     - 에이전트가 실행한 프로세스는 다른 앱에 키 입력을 보낼 수 없어서 사용자가 직접 확인한다.
     - _Requirements: 7.1, 7.3, 7.4_
 
+- [x] 10. Kiro 로그인 첫 화면
+  - [x] 10.1 `kiro-cli login` 옵션 확인(`--social github|google`, `--license free`, `--use-device-flow`)
+    - _Requirements: 8.2_
+  - [x] 10.2 로그인 흐름 모듈 `src/main/kiroLogin.js`와 테스트
+    - _Requirements: 8.2, 8.3, 8.4_
+  - [x] 10.3 메인 프로세스 연결(IPC 5개, 분석 차단, 실패 후 재확인), 로그인 화면 UI(C 영역, 같은 PR)
+    - _Requirements: 8.1, 8.5, 8.6, 8.7_
+  - [x] 10.4 `check.js` openExternal 규칙, 로그인 화면 스모크(`node scripts/smoke.js --gate`), 문서
+    - _Requirements: 8.4_
+  - [x]* 10.5 로그아웃 상태에서 실제 브라우저 로그인 확인(사용자, 2026-11-14 확인 완료)
+    - _Requirements: 8.2_
+
 ## Task Dependency Graph
 
 ```json
@@ -60,11 +72,15 @@ A 담당 데스크톱 통합 안정화 작업이다. 모든 코드 수정은 `sr
     { "id": 4, "tasks": ["7", "8", "9.1", "9.2"] },
     { "id": 5, "tasks": ["9.3"] },
     { "id": 6, "tasks": ["9.4"] },
-    { "id": 7, "tasks": ["9.5"] }
+    { "id": 7, "tasks": ["9.5", "10.1"] },
+    { "id": 8, "tasks": ["10.2"] },
+    { "id": 9, "tasks": ["10.3"] },
+    { "id": 10, "tasks": ["10.4"] },
+    { "id": 11, "tasks": ["10.5"] }
   ]
 }
 ```
 
 ## Notes
 
-- 8번과 9.5는 사용자가 직접 수행해야 하므로 자동으로 완료 처리하지 않는다.
+- 8번, 9.5, 10.5는 사용자가 직접 수행해야 하므로 자동으로 완료 처리하지 않는다.

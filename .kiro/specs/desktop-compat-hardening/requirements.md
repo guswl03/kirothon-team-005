@@ -88,3 +88,17 @@
 4. THE Selection_Watcher SHALL 주기적 폴링, 허용 목록 밖의 앱, 전면 창이 다른 앱일 때, 수정키를 누르고 있을 때, 비밀번호란, 되돌릴 수 없는 클립보드 형식이 있을 때 키 입력을 보내지 않는다.
 5. IF 허용 메신저에서 UI Automation이 실패했고 옵션이 꺼져 있으면, THEN THE App SHALL 미지원 안내에 트레이 옵션을 함께 알린다.
 6. WHEN `npm run check`를 실행하면, THE check SHALL 키 입력과 클립보드 읽기가 정해진 함수 안에서 허용 확인 뒤에만 일어나는지 점검한다.
+
+### Requirement 8: Kiro 로그인 첫 화면
+
+**User Story:** As a 처음 쓰는 사용자, I want 앱을 켜면 Kiro 로그인부터 안내받기를, so that 터미널을 몰라도 바로 시작할 수 있다.
+
+#### Acceptance Criteria
+
+1. WHEN 앱이 시작될 때 Kiro가 연결되지 않았으면, THE App SHALL 메인 화면 대신 로그인 화면을 보여 준다. OpenAI 호환 설정이 있어도 같다.
+2. WHEN 사용자가 GitHub, Google, AWS Builder ID 로그인 버튼을 누르면, THE App SHALL 해당 방법으로 `kiro-cli login`을 셸 없이 실행하고, 2초마다 연결을 확인해 연결되면 메인 화면으로 바꾼다.
+3. IF 5분 안에 연결되지 않거나 사용자가 취소하면, THEN THE App SHALL 로그인 프로세스를 끝내고 다시 시도할 수 있게 한다.
+4. THE App SHALL CLI 출력 원문과 계정 정보를 화면이나 상태에 담지 않고, 허용 도메인의 https 로그인 주소와 일회용 코드만 보여 준다.
+5. WHERE 사용자가 '나중에 하기'를 고르면, THE App SHALL 메인 화면을 보여 주되, 분석·재시도·재생성·후속 질문·자동 분석 요청이 오면 실행하지 않고 로그인 화면으로 돌아간다. 이 선택은 저장하지 않는다.
+6. IF Kiro CLI가 설치되어 있지 않으면, THEN THE App SHALL 설치를 직접 실행하지 않고 공식 설치 안내 열기와 설치 명령 복사만 제공한다.
+7. WHEN 생성이 실패하면, THE App SHALL 연결을 다시 확인하고 로그인이 풀렸으면 로그인 화면으로 돌아간다.

@@ -63,3 +63,11 @@ C가 `BUILD_REPORT.md`와 발표 자료에 옮길 수 있게 정리한 기록이
 - 확인한 것: 단위 테스트(인자, `via`, 허용 목록, 설정), `check.js` 위반 6종 탐지, 클립보드 백업·복원 5가지 경우 실제 실행, 옵션을 켠 헬퍼가 오류 없이 실행됨, 측정 도구 실행.
 - 확인하지 못한 것: 실제 카카오톡·디스코드에서의 동작. 에이전트가 띄운 프로세스의 키 입력(SendInput, SendKeys)이 대상 창에 도달하지 않아 복사 경로를 끝까지 실행하지 못했다. `docs/COMPATIBILITY.md` 메신저 체크리스트로 사용자가 확인한다.
 - C에게: 창 안에 이 옵션 스위치를 두려면 IPC 채널이 필요하다(현재는 트레이만). `appState().copyFallback`은 이미 렌더러로 전달된다.
+
+## Kiro 로그인 첫 화면 (2026-11-14 추가)
+
+- Kiro가 연결되지 않았으면 첫 화면이 로그인 화면이다. GitHub, Google, AWS Builder ID 버튼과 '터미널에서 로그인', '다시 확인', '나중에 하기'가 있다.
+- C에게: 렌더러(`index.html`의 `#gate`, `#mainView`, `#mainFoot`, `renderer.js`의 `renderGate`, `view.js`의 `pickScreen`·`gateView`, `styles.css` 끝의 로그인 화면 스타일)를 A가 같은 PR로 바꿨다. README "처음 사용하기"에 (1) Kiro CLI 설치 (2) 아는척 실행 후 로그인 버튼 (3) 브라우저에서 로그인 순서를 적어 주세요.
+- B에게: OpenAI 호환 설정이 있어도 Kiro 로그인 전에는 분석하지 않는다(사용자 결정). 공급자 선택 로직(`resolveProvider`)은 그대로다.
+- 확인한 것: 로그인 화면 스모크(`node scripts/smoke.js --gate`: 첫 화면, 나중에 하기, 분석 시 다시 로그인 화면), 이미 로그인된 PC에서 실제 kiro-cli로 로그인 시작 -> "Already logged in" -> 연결됨 전환.
+- 사용자 확인: 로그아웃 상태에서 앱 버튼으로 실제 브라우저 로그인 후 메인 화면 전환까지 확인했다(2026-11-14).

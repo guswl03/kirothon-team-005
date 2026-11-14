@@ -94,5 +94,29 @@
     return { text, sourceId: s.id, name: s.name || s.id };
   }
 
-  return { searchMessage, composeNotice, pendingKey, createPending, canSubmitFollowup, invalidTarget, statementSourceIds, isSubmitKey, stageMessage, quickMeaning };
+  /**
+   * 첫 화면 결정. Kiro가 연결됐거나 '나중에 하기'를 눌렀으면 메인 화면, 아니면 로그인 화면.
+   * 상태가 아직 없으면(시작 직후) 로그인 화면의 '확인 중'을 보여 준다.
+   */
+  function pickScreen(app) {
+    if (!app) return 'gate';
+    if (app.kiro && app.kiro.status === 'connected') return 'main';
+    return app.gateSkipped ? 'main' : 'gate';
+  }
+
+  /** 로그인 화면에서 보여 줄 부분과 문구 */
+  function gateView(app) {
+    const status = (app && app.kiro && app.kiro.status) || 'checking';
+    const login = (app && app.login) || {};
+    if (login.phase === 'waiting') {
+      return { mode: 'waiting', message: login.message || '브라우저에서 로그인을 마치면 자동으로 넘어가요.', code: login.code || '', canOpen: Boolean(login.url) };
+    }
+    const after = { failed: login.message, timeout: login.message, cancelled: login.message }[login.phase] || '';
+    if (status === 'checking') return { mode: 'checking', message: 'Kiro 연결을 확인하는 중이에요…', code: '', canOpen: false };
+    if (status === 'not_installed') return { mode: 'install', message: after || '이 PC에 Kiro CLI가 없어요. 설치한 뒤 다시 확인을 눌러 주세요.', code: '', canOpen: false };
+    if (status === 'error') return { mode: 'login', message: after || 'Kiro 연결을 확인하지 못했어요. 다시 확인하거나 로그인해 주세요.', code: '', canOpen: false };
+    return { mode: 'login', message: after || '아는척은 Kiro로 문장을 만들어요. 쓰는 계정으로 로그인해 주세요.', code: '', canOpen: false };
+  }
+
+  return { pickScreen, gateView, searchMessage, composeNotice, pendingKey, createPending, canSubmitFollowup, invalidTarget, statementSourceIds, isSubmitKey, stageMessage, quickMeaning };
 }));

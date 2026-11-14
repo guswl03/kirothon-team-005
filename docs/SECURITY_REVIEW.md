@@ -66,3 +66,15 @@ Kiro semantic reviewer로 `src/main/*`, `src/native/selection.ps1`, `scripts/com
 - 대신 누른 Ctrl+C를 메신저가 다르게 처리할 가능성(예: 선택이 없을 때 다른 동작)은 실기기에서만 확인할 수 있다. `docs/COMPATIBILITY.md` 메신저 체크리스트 7~9번.
 - 백업하지 않는 클립보드 형식(앱 전용 형식)은 "되돌릴 수 없는 형식만 있음"일 때만 막는다. 지원 형식과 함께 있으면 그 전용 형식은 복원되지 않는다.
 - 이 경로는 에이전트 환경에서 키 입력이 대상 앱에 도달하지 않아 종단 실행을 확인하지 못했다(사용자 확인 필요).
+
+## Kiro 로그인 첫 화면 검토 (A, 2026-11-14)
+
+| 위험 | 대응 | 근거 |
+|---|---|---|
+| 로그인용 외부 프로세스 실행 | `kiro-cli login`을 고정 인자(`--social github|google`, `--license free`)로만, `shell: false`로 실행. 렌더러는 방법 이름만 넘기고, 목록 밖 이름은 거부 | `src/main/kiroLogin.js` `METHODS`, 테스트 |
+| CLI 출력에 계정 정보가 섞임 | 출력 원문을 상태·화면·로그에 담지 않음. 허용 도메인 https 주소와 `XXXX-XXXX` 코드만 추출. 실패 시 종료 코드만 안내 | `extractLogin`, 테스트(이메일이 상태에 없는지 확인) |
+| 임의 주소 열기 | 로그인 주소는 렌더러가 넘기지 않음. 메인 프로세스가 가진 주소가 `LOGIN_HOSTS`의 https일 때만 연다. 설치 안내는 고정 주소 | `main.js` `kiro-login-open`, `check.js` openExternal 규칙(검사 없는 호출을 넣으면 실패하는 것 확인) |
+| 설치 스크립트 실행 | 앱은 설치를 실행하지 않음. 공식 설치 안내 페이지와 설치 명령 복사만 제공 | `KIRO_INSTALL_URL`, `KIRO_INSTALL_COMMAND` |
+| 로그인 프로세스가 남음 | 5분 제한, 취소, 앱 종료 시 끝냄. 콘솔 창(터미널 방법)은 사용자가 보는 창이라 강제로 닫지 않음 | `kiroLogin.js`, `will-quit` |
+
+확인: 로그아웃 상태에서 앱 버튼으로 실제 브라우저 로그인과 메인 화면 전환을 사용자가 확인했다(2026-11-14).

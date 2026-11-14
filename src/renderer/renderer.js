@@ -220,8 +220,30 @@ async function submitFollowup() {
   finally { if (my === state.fuSeq) setFuBusy(false); }
 }
 
+// ---- Kiro 로그인 화면 ----
+function renderGate(s) {
+  const screen = view.pickScreen(s);
+  const onGate = screen === 'gate';
+  $('gate').hidden = !onGate;
+  $('mainView').hidden = onGate;
+  $('mainFoot').hidden = onGate;
+  if (!onGate) return;
+  const g = view.gateView(s);
+  $('gateMsg').textContent = g.message;
+  $('gateLogin').hidden = g.mode !== 'login';
+  $('gateInstall').hidden = g.mode !== 'install';
+  $('gateWaiting').hidden = g.mode !== 'waiting';
+  $('gateCode').hidden = !g.code;
+  $('gateCode').textContent = g.code ? `코드 ${g.code}` : '';
+  $('gateOpen').hidden = !g.canOpen;
+  $('gateCmd').textContent = (s && s.kiroInstallCommand) || '';
+  $('gateRecheck').disabled = g.mode === 'checking' || g.mode === 'waiting';
+  $('gateSkip').hidden = g.mode === 'waiting';
+}
+
 function applyAppState(s) {
   state.app = s;
+  renderGate(s);
   $('auto').checked = s.autoAnalyze;
   $('auto').disabled = !s.autoSupported;
   $('autoLabel').textContent = !s.autoSupported ? '자동 분석: Windows 전용' : s.autoAnalyze ? '자동 분석 켜짐' : '자동 분석 꺼짐';
@@ -242,6 +264,16 @@ function submit() {
 }
 
 $('analyze').addEventListener('click', submit);
+$('gateGithub').addEventListener('click', () => bridge.kiroLogin('github'));
+$('gateGoogle').addEventListener('click', () => bridge.kiroLogin('google'));
+$('gateBuilder').addEventListener('click', () => bridge.kiroLogin('builder'));
+$('gateTerminal').addEventListener('click', () => bridge.kiroLogin('terminal'));
+$('gateCancel').addEventListener('click', () => bridge.kiroLoginCancel());
+$('gateOpen').addEventListener('click', () => bridge.kiroLoginOpen());
+$('gateInstallOpen').addEventListener('click', () => bridge.openKiroInstall());
+$('gateCmdCopy').addEventListener('click', () => { const c = state.app && state.app.kiroInstallCommand; if (c) copy(c); });
+$('gateRecheck').addEventListener('click', () => bridge.checkKiro());
+$('gateSkip').addEventListener('click', () => bridge.skipLogin());
 // Enter만 누르면 바로 분석, Shift+Enter는 줄바꿈. 분석 중에는 중복 요청하지 않는다.
 $('text').addEventListener('keydown', (e) => {
   if (!view.isSubmitKey(e)) return;
