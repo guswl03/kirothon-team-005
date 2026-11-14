@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('api', {
   followup: (q) => ipcRenderer.invoke('followup', q),
   setAuto: (on) => ipcRenderer.invoke('set-auto', on),
   setProvider: (id) => ipcRenderer.invoke('set-provider', id),
+  checkKiro: () => ipcRenderer.invoke('check-kiro'),
   copy: (t) => ipcRenderer.invoke('copy', t),
   hide: () => ipcRenderer.invoke('hide'),
   openLink: (u) => ipcRenderer.invoke('open-link', u),

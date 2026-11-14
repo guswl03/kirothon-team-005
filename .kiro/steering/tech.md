@@ -15,7 +15,7 @@ inclusion: always
 | 단위 테스트 | `node --test "test/**/*.test.js"` | `npm test`와 같다. 디렉터리 인자(`test/ai/`)는 동작하지 않으니 glob을 쓴다. |
 | 보안 정적 점검 | `node scripts/check.js` | `npm run check` |
 | 종단 스모크 | `node scripts/smoke.js` | Electron 실행, 위키백과 네트워크 필요 |
-| Kiro 실측 | `node scripts/measure-kiro.js [--runs N] [--offline]` | kiro-cli 로그인 또는 KIRO_API_KEY 필요 |
+| Kiro 실측 | `node scripts/measure-kiro.js [--runs N] [--no-search]` | kiro-cli 로그인 또는 KIRO_API_KEY 필요 |
 | 실행 | `npm.cmd start` | 개발 서버처럼 오래 실행되므로 에이전트가 직접 실행하지 않는다 |
 
 - PowerShell 실행 정책 때문에 `npm`(npm.ps1)이 막힐 수 있다. `npm.cmd` 또는 `node`를 직접 호출한다.

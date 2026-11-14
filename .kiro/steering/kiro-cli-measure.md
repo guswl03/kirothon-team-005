@@ -13,7 +13,6 @@ description: Kiro CLI 로그인, 비대화형 실행, 응답 시간·JSON 준수
 
 ## 실측
 ```powershell
-node scripts/measure-kiro.js --offline --runs 1   # 크레딧 없이 파이프라인 확인
 node scripts/measure-kiro.js --runs 2             # 주제 3개 x 2회 = Kiro 호출 6회
 ```
 출력은 숫자만 있다(응답 시간, JSON 파싱 성공률, 목표 개수 충족률, 평균 개수, 출처 연결 수). 생성된 문장은 남기지 않는다.

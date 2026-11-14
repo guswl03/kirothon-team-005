@@ -6,30 +6,29 @@
 //   node scripts/measure-kiro.js                 # Kiro CLI, 주제당 2회, 위키백과 검색 포함
 //   node scripts/measure-kiro.js --runs 5        # 주제당 5회
 //   node scripts/measure-kiro.js --no-search     # 검색 없이(출처 없음) 생성만 측정
-//   node scripts/measure-kiro.js --offline       # kiro-cli 없이 스크립트 동작만 확인(오프라인 간이 모드)
 const { spawnSync } = require('node:child_process');
-const { createKiroProvider } = require('../src/ai/providers/kiro');
-const { createOfflineProvider } = require('../src/ai/providers/offline');
+const { createKiroProvider, resolveKiroCommand } = require('../src/ai/providers/kiro');
 const { searchTopic } = require('../src/ai/search');
 const prompt = require('../src/ai/prompt');
 const { extractJson, normalizeResult } = require('../src/ai/schema');
 
+// 앱은 대부분 일상 대화에서 쓰므로 표본도 친구·지인 대화 상황으로 둔다(짧은 주제어, 상대의 말, 영어 섞인 말).
 const SAMPLES = [
   { text: '양자 컴퓨터', tone: 'casual' },
-  { text: '요즘 회사에서 생성형 AI를 업무에 많이 쓰더라고요', tone: 'work' },
-  { text: '쿠버네티스 Kubernetes 클러스터 운영', tone: 'work' },
+  { text: '요즘 회사에서 생성형 AI를 업무에 많이 쓰더라고요', tone: 'casual' },
+  { text: '어제 챔스 결승 봤어? 레알 마드리드 또 우승했더라', tone: 'casual' },
 ];
 
 function args(argv) {
   const has = (f) => argv.includes(f);
   const i = argv.indexOf('--runs');
   const runs = i >= 0 ? Math.max(1, Math.min(20, Number(argv[i + 1]) || 1)) : 2;
-  return { runs, search: !has('--no-search'), offline: has('--offline') };
+  return { runs, search: !has('--no-search') };
 }
 
 /** kiro-cli 실행 가능 여부와 인증 방식. 로그인 세션(kiro-cli login)이 KIRO_API_KEY보다 먼저 쓰인다. */
 function kiroReady(spawn = spawnSync, env = process.env) {
-  const cmd = env.KIRO_CLI_PATH || 'kiro-cli';
+  const cmd = resolveKiroCommand({ env });
   const opts = { shell: false, windowsHide: true, encoding: 'utf8', timeout: 15000 };
   const v = spawn(cmd, ['--version'], opts);
   if (v.error) return { ok: false, why: `${cmd}를 실행할 수 없어요(${v.error.code || v.error.message}). 설치 후 PATH에 추가하거나 KIRO_CLI_PATH를 설정하세요.` };
@@ -49,15 +48,10 @@ function quantile(list, q) {
 
 async function main() {
   const opt = args(process.argv.slice(2));
-  let provider;
-  if (opt.offline) {
-    provider = createOfflineProvider();
-  } else {
-    const ready = kiroReady();
-    if (!ready.ok) { console.log(`측정을 건너뜁니다: ${ready.why}`); process.exit(2); }
-    console.log(`kiro-cli ${ready.version} (인증: ${ready.auth})`);
-    provider = createKiroProvider();
-  }
+  const ready = kiroReady();
+  if (!ready.ok) { console.log(`측정을 건너뜁니다: ${ready.why}`); process.exit(2); }
+  console.log(`kiro-cli ${ready.version} (인증: ${ready.auth})`);
+  const provider = createKiroProvider();
   console.log(`공급자: ${provider.label}, 주제 ${SAMPLES.length}개 x ${opt.runs}회, 검색 ${opt.search ? '포함' : '제외'}`);
 
   const rows = [];

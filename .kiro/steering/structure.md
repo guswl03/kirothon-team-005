@@ -8,7 +8,7 @@ src/
   main/        Electron 메인: 창, 트레이, 단축키, 설정, IPC, 선택 감지 프로세스 관리
   native/      selection.ps1 (UI Automation 폴링, 비밀번호 입력란 제외)
   core/        Electron 비의존 파이프라인: service(검증 -> 검색 -> 생성 -> 정규화), textGuard
-  ai/          search(위키백과), prompt(프롬프트), schema(정규화·출처 검증), providers/(kiro, openai, offline)
+  ai/          search(위키백과), prompt(프롬프트), schema(정규화·출처 검증), providers/(kiro, openai)
   renderer/    결과 창 UI (textContent만 사용, CSP)
 test/          ai/ core/ desktop/ hooks/ mcp/  -- src와 같은 이름으로 짝을 맞춘다
 scripts/       check.js, smoke.js, measure-kiro.js, make-pdf.js

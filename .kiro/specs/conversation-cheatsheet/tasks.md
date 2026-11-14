@@ -18,7 +18,7 @@
     - _Requirements: 3.3, 4.2, 4.3, 9.5_
   - [x] 2.4 서비스 파이프라인, 재생성, 후속 질문
     - _Requirements: 3.4, 5.1, 5.2, 5.3, 6.2, 8.2, 8.3_
-  - [x] 2.5 Kiro CLI, OpenAI 호환, 오프라인 Provider
+  - [x] 2.5 Kiro CLI, OpenAI 호환 Provider (오프라인 Provider는 ai-search-quality Task 8에서 제거)
     - _Requirements: 10.1, 10.2, 10.3, 10.4_
 - [x] 3. 데스크톱 통합
   - [x] 3.1 UI Automation 선택 감지와 비밀번호 제외

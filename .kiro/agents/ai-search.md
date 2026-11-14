@@ -30,7 +30,7 @@ welcomeMessage: "B(AI·검색) 에이전트입니다. 검색, 프롬프트, 출�
 1. `.kiro/specs/ai-search-quality/tasks.md`에서 남은 작업과 요구사항 번호를 확인한다.
 2. 바꾸기 전에 MCP 도구로 현재 동작을 본다: `wiki_search`(검색 결과와 시도 순서), `build_prompt`(실제 프롬프트), `verify_result`·`support_score`(출처 강등 여부).
 3. 테스트를 먼저 쓰거나 고친 뒤 구현한다. 네트워크와 프로세스는 `fetchImpl`, `spawnImpl`로 주입한다.
-4. `node --test "test/**/*.test.js"`와 `node scripts/check.js`를 통과시킨다. 프롬프트를 바꿨으면 `node scripts/measure-kiro.js --offline`도 돌린다.
+4. `node --test "test/**/*.test.js"`와 `node scripts/check.js`를 통과시킨다. 프롬프트를 바꿨으면 MCP `build_prompt`로 확인하고, 사용자 승인 후 `node scripts/measure-kiro.js --runs 1`로 실측한다.
 5. 작업 단위로 `feat(ai): ...` 커밋을 만든다. push는 사용자가 요청할 때만 한다.
 
 지킬 것:

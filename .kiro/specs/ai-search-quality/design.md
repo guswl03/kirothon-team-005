@@ -48,7 +48,9 @@ flowchart LR
 ### Kiro 도구
 - `scripts/hooks/lib.js`: `classifyShell`, `findSecrets`, `ownershipDecision`, `testTargets` 등 판단 로직(순수 함수).
 - `.kiro/hooks/*.json`: 위 스크립트를 PreToolUse, PostFileSave, SessionStart, PostCompact, Stop, PreTaskExec, PostTaskExec, PostFileCreate에 연결한다.
-- `scripts/mcp/cheatsheet-mcp.js`: stdio JSON-RPC MCP 서버. 도구 `wiki_search`, `build_prompt`, `verify_result`, `support_score`, `offline_preview`, `project_status`.
+- `scripts/mcp/cheatsheet-mcp.js`: stdio JSON-RPC MCP 서버. 도구 `wiki_search`, `build_prompt`, `verify_result`, `support_score`, `project_status`.
+- `src/ai/providers/kiro.js`의 `checkKiro`/`resolveKiroCommand`: 연결 상태 확인과 실행 파일 위치. `src/main/main.js`가 시작 시와 `check-kiro` IPC에서 호출해 창 하단에 표시한다.
+- `test/fixtures/fakeProvider.js`: 테스트 전용 가짜 공급자(앱에는 포함하지 않음).
 
 ## Correctness Properties
 
@@ -82,7 +84,7 @@ flowchart LR
 
 - `test/ai/prompt.test.js`: 구분자 탈출, 모든 데이터 필드 이스케이프, `SOURCE_CHARS` 상한.
 - `test/ai/search.test.js`: 가짜 fetch 라우터로 단계별 재검색, 병합, 실패, 부분 실패, 취소.
-- `test/ai/schema.test.js`: Support_Score 경계, 강등, 다중 출처 선별, 오프라인 회귀.
+- `test/ai/schema.test.js`: Support_Score 경계, 강등, 다중 출처 선별, 인용 회귀, `context` 정규화.
 - `test/ai/providers.test.js`: 작업 폴더 격리, 머리말 섞인 출력, 타임아웃 설정·종료.
 - `test/hooks/`, `test/mcp/`: Hook 판단 함수와 스크립트 종료 코드, MCP 프로토콜 왕복.
 - 실제 Kiro 응답은 단위 테스트에서 부르지 않고 `scripts/measure-kiro.js`로 따로 잰다.

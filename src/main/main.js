@@ -5,10 +5,9 @@ const {
 } = require('electron');
 const { createService } = require('../core/service');
 const { createDedupe, validateInput } = require('../core/textGuard');
-const { createKiroProvider } = require('../ai/providers/kiro');
+const { createKiroProvider, checkKiro } = require('../ai/providers/kiro');
 const { createOpenAiProvider } = require('../ai/providers/openai');
-const { createOfflineProvider } = require('../ai/providers/offline');
-const { createSettings, PROVIDERS } = require('./settings');
+const { createSettings, needsConsent, PROVIDERS } = require('./settings');
 const { createSelectionWatcher } = require('./selectionWatcher');
 const { createUnsupportedGate } = require('./unsupportedGate');
 const { placeWindow } = require('./windowPlacement');
@@ -24,16 +23,55 @@ let service;
 let watcher;
 const smokeLog = [];
 const dedupe = createDedupe(4000);
-const providers = { kiro: createKiroProvider(), openai: createOpenAiProvider(), offline: createOfflineProvider() };
+const providers = { kiro: createKiroProvider(), openai: createOpenAiProvider() };
+
+// Kiro CLI 연결 상태: checking | connected | not_installed | not_logged_in | error
+let kiroStatus = { status: 'checking', message: 'Kiro CLI 연결을 확인하는 중이에요.' };
+
+async function refreshKiroStatus() {
+  kiroStatus = { status: 'checking', message: 'Kiro CLI 연결을 확인하는 중이에요.' };
+  pushState();
+  kiroStatus = await checkKiro();
+  pushState();
+  return kiroStatus;
+}
 
 // ---------- 공급자 선택 ----------
 function resolveProvider() {
   const pref = settings.get().provider;
-  if (pref !== 'auto') return providers[pref];
-  if (process.env.KIRO_API_KEY) return providers.kiro;
-  if (providers.openai.configured) return providers.openai;
-  return providers.offline;
+  if (process.env.CC_SMOKE) return smokeProvider;
+  if (pref !== 'auto' && providers[pref]) return providers[pref];
+  if (providers.openai.configured && kiroStatus.status !== 'connected' && !process.env.KIRO_API_KEY) return providers.openai;
+  return kiroProvider();
 }
+
+/** 기본 공급자는 Kiro. 연결이 확인되지 않았으면 호출하지 않고 연결 방법을 오류로 안내한다. */
+function kiroProvider() {
+  if (process.env.KIRO_API_KEY || !['not_installed', 'not_logged_in'].includes(kiroStatus.status)) return providers.kiro;
+  return {
+    ...providers.kiro,
+    async generate() {
+      throw new Error(`Kiro에 연결되지 않았어요. ${kiroStatus.message} 그다음 창 아래의 '다시 확인'을 눌러 주세요.`);
+    },
+  };
+}
+
+// 스모크 테스트(npm run smoke) 전용 고정 응답. 외부 AI 없이 화면 렌더링만 확인한다. 일반 실행에서는 쓰지 않는다.
+const smokeProvider = {
+  id: 'smoke', label: '스모크 테스트 고정 응답', external: false,
+  async generate() {
+    const s = (text) => ({ text, basis: 'general', sourceIds: [] });
+    const q = (question) => ({ question, answers: [{ text: '답변 1', sourceIds: [] }, { text: '답변 2', sourceIds: [] }] });
+    return JSON.stringify({
+      context: '스모크 테스트', topic: '스모크 테스트',
+      terms: [{ term: '용어 1', meaning: '뜻 1', inThisText: '의미 1', confidence: 'high', sourceIds: [] }, { term: '용어 2', meaning: '뜻 2', confidence: 'low', sourceIds: [] }],
+      statements: ['문장 1', '문장 2', '문장 3', '문장 4', '문장 5'].map(s),
+      questions: ['질문 1', '질문 2', '질문 3', '질문 4', '질문 5'].map(q),
+      topicSwitches: [1, 2, 3].map((i) => ({ topic: `화제 ${i}`, line: `전환 문장 ${i}`, sourceIds: [] })),
+      keyFacts: [],
+    });
+  },
+};
 
 function appState() {
   const s = settings.get();
@@ -42,6 +80,7 @@ function appState() {
     ...s,
     providers: PROVIDERS,
     activeProvider: { id: p.id, label: p.label, external: p.external },
+    kiro: { status: kiroStatus.status, auth: kiroStatus.auth || '', message: kiroStatus.message },
     autoSupported: process.platform === 'win32',
     watching: Boolean(watcher && watcher.running),
     shortcut: SHORTCUT,
@@ -95,7 +134,7 @@ async function setAutoAnalyze(on) {
       dialog.showMessageBox(win, { type: 'info', message: '자동 선택 감지는 Windows에서만 지원돼요. 붙여넣기 입력을 사용해 주세요.' });
       return false;
     }
-    if (!settings.get().consentAccepted) {
+    if (needsConsent(settings.get(), resolveProvider().id)) {
       const p = resolveProvider();
       const { response } = await dialog.showMessageBox(win && win.isVisible() ? win : undefined, {
         type: 'question', buttons: ['동의하고 켜기', '취소'], defaultId: 1, cancelId: 1, title: '자동 분석 안내',
@@ -104,13 +143,14 @@ async function setAutoAnalyze(on) {
           '• 선택한 텍스트만 읽어요(드래그나 키보드 선택 모두 해당). 전체 화면, 문서, 클립보드는 자동으로 수집하지 않아요.',
           '• 비밀번호 입력란은 읽지 않아요.',
           '• 선택한 내용은 위키백과 검색 요청에 포함돼요.',
-          `• 문장 생성: ${p.label}${p.external ? ' (선택한 내용이 외부 서비스로 전달돼요)' : ' (이 PC에서만 처리해요)'}`,
+          `• 문장 생성: ${p.label}. ${p.id === 'kiro' ? '선택한 내용과 검색 자료가 Kiro 서비스로 전달돼요.' : p.external ? '선택한 내용과 검색 자료가 설정한 외부 AI 서비스로 전달돼요.' : '이 PC에서만 처리해요.'}`,
+          '• 문장을 만드는 AI가 바뀌면 이 안내를 다시 보여드려요.',
           '• 앱은 선택 내용과 결과를 파일로 저장하거나 로그에 남기지 않아요. 외부 서비스의 보관 정책은 각 제공자 기준이에요.',
           '• 언제든 트레이 메뉴나 창에서 일시 중지할 수 있어요.',
         ].join('\n'),
       });
       if (response !== 0) { pushState(); return false; }
-      settings.set({ consentAccepted: true });
+      settings.set({ consentAccepted: true, consentProvider: p.id });
     }
     settings.set({ autoAnalyze: true });
     watcher.start();
@@ -127,8 +167,23 @@ function ownPids() {
   try { return new Set(app.getAppMetrics().map((m) => m.pid)); } catch { return new Set(); }
 }
 
+/** 동의 때 안내한 공급자와 지금 쓰일 공급자가 다르면 자동 분석을 멈추고 다시 켜도록 안내한다. */
+function consentStillValid() {
+  if (!needsConsent(settings.get(), resolveProvider().id)) return true;
+  settings.set({ autoAnalyze: false });
+  watcher.stop();
+  pushState();
+  rebuildTray();
+  toRenderer('svc-event', {
+    type: 'notice', requestId: 0,
+    message: `문장을 만드는 AI가 동의할 때와 달라져(${resolveProvider().label}) 자동 분석을 멈췄어요. 다시 켜면 안내가 다시 떠요.`,
+  });
+  return false;
+}
+
 function onSelection({ text, pid }) {
   if (!settings.get().autoAnalyze) return;
+  if (!consentStillValid()) return;
   if (ownPids().has(pid)) return;                 // 결과 창 안의 선택은 새 분석을 만들지 않는다
   if (win && win.isFocused()) return;
   const v = validateInput(text);
@@ -205,21 +260,23 @@ function registerIpc() {
   ipcMain.handle('set-auto', guard((on) => setAutoAnalyze(on === true)));
   ipcMain.handle('set-provider', guard(async (id) => {
     const before = settings.get().provider;
-    const wasExternal = resolveProvider().external;
+    const beforeId = resolveProvider().id;
     settings.set({ provider: PROVIDERS.includes(id) ? id : 'auto' });
     const p = resolveProvider();
-    // 동의 이후 외부 AI로 바꾸면 선택 내용이 밖으로 나가므로 다시 확인한다.
-    if (p.external && !wasExternal) {
+    // 동의 때 안내한 곳과 다른 외부 서비스로 선택 내용이 가게 되면 다시 확인한다.
+    if (p.external && p.id !== beforeId) {
       const { response } = await dialog.showMessageBox(win, {
-        type: 'question', buttons: ['외부 AI 사용', '취소'], defaultId: 1, cancelId: 1, title: 'AI 공급자 변경',
-        message: `${p.label}를 쓰면 선택한 내용이 외부 서비스로 전달돼요`,
+        type: 'question', buttons: ['변경하고 사용', '취소'], defaultId: 1, cancelId: 1, title: 'AI 공급자 변경',
+        message: `${p.label}로 바꾸면 선택한 내용이 다른 외부 서비스로 전달돼요`,
         detail: '외부 서비스의 보관 정책은 각 제공자 기준이에요. 계속할까요?',
       });
       if (response !== 0) settings.set({ provider: before });
+      else if (settings.get().consentAccepted) settings.set({ consentProvider: p.id });
     }
     pushState();
     return appState();
   }));
+  ipcMain.handle('check-kiro', guard(async () => { await refreshKiroStatus(); return appState(); }));
   ipcMain.handle('copy', guard((text) => { if (isStr(text, 5000)) clipboard.writeText(text); return true; }));
   ipcMain.handle('hide', guard(() => { win.hide(); }));
   ipcMain.handle('open-link', guard((url) => {
@@ -256,6 +313,7 @@ function runSmoke() {
           resultsVisible: !document.getElementById('results').hidden,
           error: document.getElementById('error').hidden ? '' : document.getElementById('errorText').textContent,
           hero: document.getElementById('heroText').textContent,
+          terms: n('terms'), meaningVisible: !document.getElementById('meaning').hidden, genBy: document.getElementById('genBy').textContent,
           statements: n('statements'), questions: n('questions'), switches: n('switches'), sources: n('sources'),
           searchNote: document.getElementById('srcStatus').textContent,
           provider: document.getElementById('providerNote').textContent,
@@ -283,13 +341,21 @@ if (!process.env.CC_SMOKE && !app.requestSingleInstanceLock()) { app.quit(); } e
       onError: (e) => toRenderer('svc-event', { type: 'notice', message: `자동 감지에 문제가 생겼어요. ${e.message}`, requestId: 0 }),
     });
     registerIpc();
-    if (process.env.CC_SMOKE) settings.set({ provider: 'offline' });
     createWindow();
     if (process.env.CC_SMOKE) { runSmoke(); return; }
+    refreshKiroStatus();
     createTray();
     globalShortcut.register(SHORTCUT, analyzeClipboard);
     win.once('ready-to-show', () => win.show());
-    if (settings.get().autoAnalyze && settings.get().consentAccepted) watcher.start();
+    if (settings.get().autoAnalyze) {
+      if (needsConsent(settings.get(), resolveProvider().id)) {
+        // 예전 동의(오프라인 간이 모드 시절 포함)나 다른 공급자에 대한 동의는 인정하지 않는다.
+        settings.set({ autoAnalyze: false });
+        win.webContents.once('did-finish-load', () => toRenderer('svc-event', { type: 'notice', requestId: 0, message: '문장을 만드는 AI가 바뀌어 자동 분석을 껐어요. 다시 켜면 안내가 다시 떠요.' }));
+      } else {
+        watcher.start();
+      }
+    }
   });
   app.on('before-quit', () => { app.isQuitting = true; });
   app.on('will-quit', () => { globalShortcut.unregisterAll(); if (watcher) watcher.stop(); });

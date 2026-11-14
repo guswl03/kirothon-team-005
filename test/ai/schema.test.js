@@ -54,7 +54,7 @@ test('후속 답변: 비어 있으면 insufficient', () => {
 });
 
 const { supportScore, SUPPORT_MIN } = require('../../src/ai/schema');
-const { createOfflineProvider } = require('../../src/ai/providers/offline');
+const { createFakeProvider } = require('../fixtures/fakeProvider');
 
 const realSources = [
   { id: 'S1', title: '양자 컴퓨터', extract: '양자 컴퓨터는 양자역학의 중첩과 얽힘을 이용해 계산하는 컴퓨터이다. 특정 문제에서 기존 컴퓨터보다 빠를 수 있다.' },
@@ -91,12 +91,46 @@ test('뒷받침되지 않는 핵심 정보와 후속 답변 출처는 제거한�
   assert.deepEqual(a.answers[0].sourceIds, []);
 });
 
-test('오프라인 간이 모드의 인용 문장은 검증에서 강등되지 않는다', async () => {
-  for (const tone of ['casual', 'work']) {
-    const raw = await createOfflineProvider().generate({ ctx: { text: '양자 컴퓨터', tone, sources: realSources }, kind: 'full' });
-    const r = normalizeResult(JSON.parse(raw), realSources);
-    const sourced = r.statements.filter((s) => s.basis === 'sourced');
-    assert.equal(sourced.length, 3, tone);
-    assert.equal(r.keyFacts.length, 3, tone);
-  }
+test('출처 문장을 그대로 인용한 문장은 검증에서 강등되지 않는다', async () => {
+  const raw = await createFakeProvider().generate({ ctx: { text: '양자 컴퓨터', tone: 'casual', sources: realSources }, kind: 'full' });
+  const r = normalizeResult(JSON.parse(raw), realSources);
+  assert.equal(r.statements.filter((s) => s.basis === 'sourced').length, 3);
+  assert.equal(r.keyFacts.length, 3);
+});
+
+test('terms: 뜻 없는 항목과 중복을 버리고, 확신도는 high만 인정하며, 최대 5개', () => {
+  const { MAX_TERMS } = require('../../src/ai/schema');
+  const r = normalizeResult({
+    terms: [
+      { term: '치이카와', meaning: '일본 작가 나가노의 캐릭터 만화', inThisText: '캐릭터 이름', confidence: 'high' },
+      { term: '치이카와', meaning: '중복' },
+      { term: '토벌', meaning: '작품 속 캐릭터들이 돈을 벌려고 하는 일', confidence: 'sure' },
+      { term: '빈뜻', meaning: '' },
+      null, 'x',
+      ...Array.from({ length: 8 }, (_, i) => ({ term: `t${i}`, meaning: 'm' })),
+    ],
+  });
+  assert.equal(r.terms.length, MAX_TERMS);
+  assert.deepEqual(r.terms.slice(0, 2).map((t) => [t.term, t.confidence]), [['치이카와', 'high'], ['토벌', 'low']]);
+  assert.equal(r.terms[0].inThisText, '캐릭터 이름');
+  assert.equal(r.terms[1].origin, '');
+  assert.deepEqual(normalizeResult({}).terms, []);
+});
+
+test('terms: 출처가 뜻풀이를 뒷받침할 때만 출처 연결을 남긴다', () => {
+  const r = normalizeResult({
+    terms: [
+      { term: '양자 컴퓨터', meaning: '양자역학의 중첩과 얽힘을 이용해 계산하는 컴퓨터', sourceIds: ['S1'] },
+      { term: '토벌', meaning: '캐릭터들이 몬스터를 잡아 돈을 버는 일', sourceIds: ['S1', 'S9'] },
+    ],
+  }, realSources);
+  assert.deepEqual(r.terms[0].sourceIds, ['S1']);
+  assert.deepEqual(r.terms[1].sourceIds, []);
+});
+
+test('normalizeResult: 모델이 파악한 context를 200자까지 남기고, 없으면 빈 문자열', () => {
+  assert.equal(normalizeResult({ context: '  팀 회의에서 동료가 OKR 도입을 꺼낸 상황  ' }).context, '팀 회의에서 동료가 OKR 도입을 꺼낸 상황');
+  assert.equal(normalizeResult({ context: 'x'.repeat(300) }).context.length, 200);
+  assert.equal(normalizeResult({}).context, '');
+  assert.equal(normalizeResult({ context: 42 }).context, '');
 });

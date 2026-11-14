@@ -11,7 +11,6 @@ description: Kiro CLI로 앱의 전체 생성 프롬프트를 실측하고(응�
 
 ## 2. 기준선
 ```powershell
-node scripts/measure-kiro.js --offline --runs 1
 node scripts/measure-kiro.js --runs 2
 ```
 요약 4줄(JSON 성공률, 목표 충족률, 응답 시간 중앙값·최대, 평균 개수)을 기록한다.
