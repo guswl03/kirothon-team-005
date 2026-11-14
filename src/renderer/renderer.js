@@ -2,8 +2,10 @@
 // 렌더러: innerHTML을 쓰지 않고 textContent로만 DOM을 만든다(XSS 방지).
 const $ = (id) => document.getElementById(id);
 const bridge = window.api;
+const view = window.CCView;
 
-const state = { reqId: 0, result: null, sources: [], app: null, busy: false };
+const state = { reqId: 0, result: null, sources: [], search: null, app: null, busy: false, fuBusy: false, fuSeq: 0 };
+const pending = view.createPending();   // 재생성 중인 항목
 
 function h(tag, props = {}, ...kids) {
   const el = document.createElement(tag);
@@ -37,8 +39,26 @@ function srcBadges(ids) {
 }
 
 function copyBtn(text) { return h('button', { onclick: () => copy(text), 'aria-label': `복사: ${text.slice(0, 20)}` }, '복사'); }
+function setRegenBusy(btn, busy) {
+  btn.disabled = busy;
+  btn.textContent = busy ? '만드는 중…' : '다시 만들기';
+  if (busy) btn.setAttribute('aria-busy', 'true'); else btn.removeAttribute('aria-busy');
+}
 function regenBtn(kind, index) {
-  return h('button', { onclick: () => bridge.regenerate({ kind, index, direction: $('direction').value }), 'aria-label': '이 항목만 다시 만들기' }, '다시 만들기');
+  const key = view.pendingKey(kind, index);
+  const btn = h('button', { 'aria-label': '이 항목만 다시 만들기' }, '다시 만들기');
+  setRegenBusy(btn, pending.has(key));
+  btn.addEventListener('click', async () => {
+    const token = pending.start(key);
+    if (token === null) return;                    // 이미 만드는 중
+    setRegenBusy(btn, true);
+    try { await bridge.regenerate({ kind, index, direction: $('direction').value }); }
+    finally {
+      pending.finish(key, token);
+      if (btn.isConnected) setRegenBusy(btn, false); // 결과로 다시 그려졌으면 새 버튼이 이미 있음
+    }
+  });
+  return btn;
 }
 
 function render() {
@@ -47,13 +67,13 @@ function render() {
   if (!r) return;
   const first = r.statements[0];
   $('heroText').textContent = first ? first.text : '활용할 문장을 만들지 못했어요.';
-  $('heroMeta').replaceChildren(...(first ? [].concat(srcBadges(first.sourceIds)) : []));
+  $('heroMeta').replaceChildren(...(first ? [].concat(srcBadges(view.statementSourceIds(first))) : []));
   $('heroCopy').disabled = !first;
   $('heroCopy').onclick = () => first && copy(first.text);
 
   $('statements').replaceChildren(...r.statements.map((s, i) => h('li', {},
     h('p', { class: 'text' }, s.text),
-    h('div', { class: 'meta' }, srcBadges(s.sourceIds)),
+    h('div', { class: 'meta' }, srcBadges(view.statementSourceIds(s))),
     h('div', { class: 'actions' }, copyBtn(s.text), regenBtn('statement', i)))));
 
   $('questions').replaceChildren(...r.questions.map((q, qi) => h('details', { class: 'q' },
@@ -69,15 +89,17 @@ function render() {
     h('div', { class: 'actions' }, copyBtn(s.line), regenBtn('switch', i)))));
 
   $('facts').replaceChildren(...r.keyFacts.map((f) => h('li', {}, f.text, ' ', srcBadges(f.sourceIds))));
-  if (r.shortfalls.length) setNotice(`정보가 부족해 일부는 목표보다 적게 만들었어요: ${r.shortfalls.join(', ')}. 부족한 부분은 지어내지 않았어요.`);
-  else setNotice('');
+  // 검색 부족/실패 안내는 결과가 와도 유지한다.
+  const search = state.search || {};
+  setNotice(view.composeNotice({ searchStatus: search.status, searchError: search.error, shortfalls: r.shortfalls }));
 }
 
 function renderSources(ev) {
   state.sources = ev.sources || [];
-  const msg = { ok: '', insufficient: '관련 자료를 충분히 찾지 못했어요. 아래 문장은 출처 없는 일반 표현이에요.', failed: `검색에 실패했어요(${ev.error || '네트워크 오류'}). 확인되지 않은 정보는 사실로 표시하지 않아요.` }[ev.status] || '';
+  state.search = { status: ev.status, error: ev.error };
+  const msg = view.searchMessage(ev.status, ev.error);
   $('srcStatus').textContent = msg;
-  if (ev.status !== 'ok') setNotice(msg);
+  if (msg) setNotice(msg);
   $('sources').replaceChildren(...state.sources.map((s) => h('li', {},
     h('strong', {}, `${s.id} · ${s.name}`), h('br'),
     h('button', { class: 'linkbtn', onclick: () => bridge.openLink(s.url) }, '원문 열기'),
@@ -85,10 +107,14 @@ function renderSources(ev) {
 }
 
 function onEvent(ev) {
-  if (ev.type === 'invalid') { setStatus(''); setError(''); setNotice(ev.message); return; }
+  if (ev.type === 'invalid') {
+    if (view.invalidTarget(ev) === 'followup') { setFuBusy(false); showFuMessage(ev.message); return; }
+    setStatus(''); setError(''); setNotice(ev.message); return;
+  }
   if (ev.type === 'notice') { setNotice(ev.message); return; }
   if (ev.type === 'start') {
-    state.reqId = ev.requestId; state.result = null; setError(''); setNotice('');
+    state.reqId = ev.requestId; state.result = null; state.search = null; setError(''); setNotice('');
+    pending.clear(); state.fuSeq += 1; setFuBusy(false);
     $('fuOut').replaceChildren(); $('results').hidden = true; setTone(ev.tone); setBusy(true); return;
   }
   if (ev.requestId !== state.reqId) return;        // 이전 요청의 늦은 응답 무시
@@ -102,24 +128,47 @@ function onEvent(ev) {
     case 'result': state.result = ev.result; $('providerNote').textContent = `생성: ${ev.provider}`; setStatus(''); render(); setBusy(false); break;
     case 'error': setStatus(''); setBusy(false); setError(ev.message); break;
     case 'regenerated':
+      pending.finish(view.pendingKey(ev.kind, ev.index));
       if (ev.item) {
         const key = { statement: 'statements', question: 'questions', switch: 'topicSwitches' }[ev.kind];
         state.result[key][ev.index] = ev.item; render(); toast('새로 만들었어요');
       } else toast(ev.message || '다시 만들지 못했어요');
       break;
     case 'followup-start': $('fuOut').replaceChildren(h('p', { class: 'hint', role: 'status' }, '답변을 만드는 중…')); break;
-    case 'followup-error': $('fuOut').replaceChildren(h('div', { class: 'banner error' }, ev.message)); break;
+    case 'followup-error': setFuBusy(false); $('fuOut').replaceChildren(h('div', { class: 'banner error', role: 'alert' }, ev.message)); break;
     case 'followup-result':
-      $('fuOut').replaceChildren(
+      setFuBusy(false);
+      // replaceChildren(null)은 "null" 글자를 넣으므로 빈 항목은 걸러낸다.
+      $('fuOut').replaceChildren(...[
         h('p', { class: 'hint' }, `질문: ${ev.question}`),
         ev.insufficient ? h('div', { class: 'banner' }, ev.note || '답변을 만들 정보가 부족해요. 무리하게 단정하지 않았어요.') : null,
-        h('ul', { class: 'cards' }, ev.answers.map((a) => h('li', {}, h('p', { class: 'text' }, a.text), h('div', { class: 'actions' }, copyBtn(a.text), srcBadges(a.sourceIds))))));
+        h('ul', { class: 'cards' }, ev.answers.map((a) => h('li', {}, h('p', { class: 'text' }, a.text), h('div', { class: 'actions' }, copyBtn(a.text), srcBadges(a.sourceIds))))),
+      ].filter(Boolean));
       break;
     default: break;
   }
 }
 
 function setBusy(b) { state.busy = b; $('analyze').disabled = b; }
+
+function setFuBusy(b) {
+  state.fuBusy = b;
+  const btn = $('fuBtn');
+  btn.disabled = b;
+  btn.textContent = b ? '만드는 중…' : '답변 만들기';
+}
+function showFuMessage(msg) { $('fuOut').replaceChildren(h('div', { class: 'banner', role: 'alert' }, msg)); }
+
+/** 후속 질문은 한 번에 하나만 보낸다(Enter 연타·버튼 중복 클릭 방지). */
+async function submitFollowup() {
+  const text = $('fuInput').value;
+  if (state.fuBusy) return;
+  if (!view.canSubmitFollowup({ busy: state.fuBusy, text })) { showFuMessage('상대가 한 질문을 입력해 주세요.'); $('fuInput').focus(); return; }
+  const my = ++state.fuSeq;
+  setFuBusy(true);
+  try { await bridge.followup(text); }
+  finally { if (my === state.fuSeq) setFuBusy(false); }
+}
 
 function applyAppState(s) {
   state.app = s;
@@ -149,8 +198,8 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') bridge.hid
 $('auto').addEventListener('change', async (e) => { const on = await bridge.setAuto(e.target.checked); e.target.checked = Boolean(on); });
 $('provider').addEventListener('change', (e) => bridge.setProvider(e.target.value));
 document.querySelectorAll('input[name=tone]').forEach((r) => r.addEventListener('change', () => { if (state.result) bridge.setTone(tone()); }));
-$('fuBtn').addEventListener('click', () => bridge.followup($('fuInput').value));
-$('fuInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') bridge.followup($('fuInput').value); });
+$('fuBtn').addEventListener('click', submitFollowup);
+$('fuInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); submitFollowup(); } });
 
 bridge.onEvent(onEvent);
 bridge.onState(applyAppState);
